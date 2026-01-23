@@ -6,6 +6,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { VoiceAssistant } from '@/components/VoiceAssistant';
 import { 
   FileText, 
   Pill, 
@@ -14,7 +15,8 @@ import {
   Plus,
   Check,
   Clock,
-  Calendar
+  Calendar,
+  Mic
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -304,6 +306,9 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Voice Assistant */}
+        <VoiceAssistant />
       </div>
     </AppLayout>
   );
