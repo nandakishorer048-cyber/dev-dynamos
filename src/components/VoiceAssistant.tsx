@@ -42,6 +42,7 @@ export function VoiceAssistant({ agentId, className }: VoiceAssistantProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [customAgentId, setCustomAgentId] = useState(agentId || '');
+  const [useDefaultAgent, setUseDefaultAgent] = useState(true);
   const { toast } = useToast();
 
   const conversation = useConversation({
@@ -69,11 +70,11 @@ export function VoiceAssistant({ agentId, className }: VoiceAssistantProps) {
   });
 
   const startConversation = useCallback(async () => {
-    if (!customAgentId) {
+    if (!useDefaultAgent && !customAgentId) {
       toast({
         variant: 'destructive',
         title: 'Agent ID Required',
-        description: 'Please enter your ElevenLabs Agent ID to start the conversation.',
+        description: 'Please enter your ElevenLabs Agent ID or use the default agent.',
       });
       return;
     }
@@ -85,7 +86,7 @@ export function VoiceAssistant({ agentId, className }: VoiceAssistantProps) {
 
       // Get signed URL from edge function
       const { data, error } = await supabase.functions.invoke('elevenlabs-conversation-token', {
-        body: { agentId: customAgentId },
+        body: useDefaultAgent ? { useDefault: true } : { agentId: customAgentId },
       });
 
       if (error || !data?.signed_url) {
@@ -109,7 +110,7 @@ export function VoiceAssistant({ agentId, className }: VoiceAssistantProps) {
     } finally {
       setIsConnecting(false);
     }
-  }, [conversation, customAgentId, toast]);
+  }, [conversation, customAgentId, useDefaultAgent, toast]);
 
   const stopConversation = useCallback(async () => {
     await conversation.endSession();
@@ -134,30 +135,64 @@ export function VoiceAssistant({ agentId, className }: VoiceAssistantProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Agent ID Input */}
-        <div className="space-y-2">
-          <Label htmlFor="agentId" className="flex items-center gap-2">
-            <Globe className="h-4 w-4 text-muted-foreground" />
-            ElevenLabs Agent ID
+        {/* Agent Selection */}
+        <div className="space-y-3">
+          <Label className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-muted-foreground" />
+            Agent Configuration
           </Label>
-          <Input
-            id="agentId"
-            placeholder="Enter your ElevenLabs Agent ID"
-            value={customAgentId}
-            onChange={(e) => setCustomAgentId(e.target.value)}
-            disabled={isConnected}
-          />
-          <p className="text-xs text-muted-foreground">
-            Create an agent at{' '}
-            <a 
-              href="https://elevenlabs.io/app/conversational-ai" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
+          
+          {/* Default Agent Toggle */}
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant={useDefaultAgent ? "default" : "outline"}
+              size="sm"
+              onClick={() => setUseDefaultAgent(true)}
+              disabled={isConnected}
             >
-              ElevenLabs Conversational AI
-            </a>
-          </p>
+              Use Default Agent
+            </Button>
+            <Button
+              type="button"
+              variant={!useDefaultAgent ? "default" : "outline"}
+              size="sm"
+              onClick={() => setUseDefaultAgent(false)}
+              disabled={isConnected}
+            >
+              Custom Agent
+            </Button>
+          </div>
+
+          {/* Custom Agent ID Input - only show when not using default */}
+          {!useDefaultAgent && (
+            <div className="space-y-2">
+              <Input
+                id="agentId"
+                placeholder="Enter your ElevenLabs Agent ID"
+                value={customAgentId}
+                onChange={(e) => setCustomAgentId(e.target.value)}
+                disabled={isConnected}
+              />
+              <p className="text-xs text-muted-foreground">
+                Create an agent at{' '}
+                <a 
+                  href="https://elevenlabs.io/app/conversational-ai" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  ElevenLabs Conversational AI
+                </a>
+              </p>
+            </div>
+          )}
+
+          {useDefaultAgent && (
+            <p className="text-xs text-muted-foreground">
+              ✅ Ready to use! The default health assistant is pre-configured.
+            </p>
+          )}
         </div>
 
         {/* Language Selection */}
@@ -255,7 +290,7 @@ export function VoiceAssistant({ agentId, className }: VoiceAssistantProps) {
           ) : (
             <Button 
               onClick={startConversation}
-              disabled={isConnecting || !customAgentId}
+              disabled={isConnecting || (!useDefaultAgent && !customAgentId)}
               size="lg"
               className="gap-2"
             >

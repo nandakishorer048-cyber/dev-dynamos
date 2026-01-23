@@ -5,30 +5,41 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Default agent ID for Mediguide health assistant
-// Users can create their own agent at https://elevenlabs.io/app/conversational-ai
-const DEFAULT_AGENT_ID = "default";
-
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { agentId } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { agentId, useDefault } = body;
+
     const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
+    const defaultAgentId = Deno.env.get('ELEVENLABS_AGENT_ID');
 
     if (!ELEVENLABS_API_KEY) {
       throw new Error('ELEVENLABS_API_KEY is not configured');
     }
 
-    const targetAgentId = agentId || DEFAULT_AGENT_ID;
+    // Use provided agentId or fall back to default from env
+    const finalAgentId = agentId || (useDefault ? defaultAgentId : null);
 
-    console.log('Generating ElevenLabs conversation token for agent:', targetAgentId);
+    if (!finalAgentId) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Agent ID is required',
+          hasDefaultAgent: !!defaultAgentId 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Generating ElevenLabs conversation token for agent:', finalAgentId.substring(0, 8) + '...');
 
     // Get signed URL for WebSocket connection (more compatible)
     const response = await fetch(
-      `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${targetAgentId}`,
+      `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${finalAgentId}`,
       {
         headers: {
           'xi-api-key': ELEVENLABS_API_KEY,
