@@ -81,6 +81,14 @@ export function VoiceAssistant({ agentId, className }: VoiceAssistantProps) {
 
     setIsConnecting(true);
     try {
+      // Check if microphone is available first
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const hasMicrophone = devices.some(device => device.kind === 'audioinput');
+      
+      if (!hasMicrophone) {
+        throw new Error('No microphone found. Please connect a microphone and try again.');
+      }
+
       // Request microphone permission
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
@@ -89,8 +97,14 @@ export function VoiceAssistant({ agentId, className }: VoiceAssistantProps) {
         body: useDefaultAgent ? { useDefault: true } : { agentId: customAgentId },
       });
 
-      if (error || !data?.signed_url) {
-        throw new Error(error?.message || 'No signed URL received');
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to get conversation token');
+      }
+      
+      if (!data?.signed_url) {
+        const errorMsg = data?.error || 'No signed URL received';
+        throw new Error(errorMsg);
       }
 
       // Start the conversation with WebSocket
@@ -100,12 +114,20 @@ export function VoiceAssistant({ agentId, className }: VoiceAssistantProps) {
     } catch (error: unknown) {
       console.error('Failed to start conversation:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
+      
+      let description = message;
+      if (message.includes('Permission denied') || message.includes('NotAllowedError')) {
+        description = 'Please enable microphone access in your browser settings to use voice features.';
+      } else if (message.includes('NotFoundError') || message.includes('Requested device not found') || message.includes('No microphone')) {
+        description = 'No microphone detected. Please connect a microphone and refresh the page.';
+      } else if (message.includes('ELEVENLABS_AGENT_ID')) {
+        description = 'Voice assistant is not configured. Please contact the administrator.';
+      }
+      
       toast({
         variant: 'destructive',
         title: 'Failed to Start',
-        description: message.includes('Permission denied') 
-          ? 'Please enable microphone access to use voice features.'
-          : message,
+        description,
       });
     } finally {
       setIsConnecting(false);

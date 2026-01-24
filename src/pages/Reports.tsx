@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   FileText, 
   Upload, 
@@ -19,7 +20,8 @@ import {
   AlertTriangle,
   Loader2,
   Trash2,
-  Eye
+  Eye,
+  Globe
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -61,7 +63,21 @@ export default function Reports() {
     reportType: '',
     reportDate: '',
     reportText: '',
+    language: 'en',
   });
+
+  const LANGUAGES = [
+    { code: 'en', name: 'English' },
+    { code: 'es', name: 'Español' },
+    { code: 'fr', name: 'Français' },
+    { code: 'de', name: 'Deutsch' },
+    { code: 'hi', name: 'हिन्दी' },
+    { code: 'pt', name: 'Português' },
+    { code: 'ar', name: 'العربية' },
+    { code: 'zh', name: '中文' },
+    { code: 'ja', name: '日本語' },
+    { code: 'ko', name: '한국어' },
+  ];
 
   useEffect(() => {
     if (user) fetchReports();
@@ -99,6 +115,7 @@ export default function Reports() {
         body: {
           reportText: newReport.reportText,
           reportType: newReport.reportType,
+          language: newReport.language,
         },
       });
 
@@ -121,7 +138,7 @@ export default function Reports() {
       if (saveError) throw saveError;
 
       setReports([savedReport, ...reports]);
-      setNewReport({ title: '', reportType: '', reportDate: '', reportText: '' });
+      setNewReport({ title: '', reportType: '', reportDate: '', reportText: '', language: 'en' });
       setDialogOpen(false);
 
       toast({
@@ -234,14 +251,37 @@ export default function Reports() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="date">Report Date</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={newReport.reportDate}
-                    onChange={(e) => setNewReport({ ...newReport, reportDate: e.target.value })}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Report Date</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={newReport.reportDate}
+                      onChange={(e) => setNewReport({ ...newReport, reportDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Globe className="h-4 w-4" />
+                      Analysis Language
+                    </Label>
+                    <Select 
+                      value={newReport.language} 
+                      onValueChange={(value) => setNewReport({ ...newReport, language: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LANGUAGES.map((lang) => (
+                          <SelectItem key={lang.code} value={lang.code}>
+                            {lang.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="space-y-2">

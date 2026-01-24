@@ -11,16 +11,33 @@ serve(async (req) => {
   }
 
   try {
-    const { medicineName, dosage, purpose } = await req.json();
+    const { medicineName, dosage, purpose, language = 'en' } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    console.log('Explaining medicine:', { medicineName, dosage });
+    const languageNames: Record<string, string> = {
+      en: 'English',
+      es: 'Spanish',
+      fr: 'French',
+      de: 'German',
+      hi: 'Hindi',
+      pt: 'Portuguese',
+      ar: 'Arabic',
+      zh: 'Chinese',
+      ja: 'Japanese',
+      ko: 'Korean',
+    };
+
+    const targetLanguage = languageNames[language] || 'English';
+
+    console.log('Explaining medicine:', { medicineName, dosage, language: targetLanguage });
 
     const systemPrompt = `You are a friendly, knowledgeable pharmacy assistant. Your job is to help patients understand their medications in simple, easy-to-understand language.
+
+IMPORTANT: You MUST respond entirely in ${targetLanguage}. All text in your response must be in ${targetLanguage}.
 
 When explaining a medication:
 1. Explain what the medicine does in simple terms
@@ -35,17 +52,18 @@ Important guidelines:
 - Don't replace professional medical advice
 - Encourage patients to consult their pharmacist or doctor for specific concerns
 - Be encouraging and helpful
+- ALL TEXT MUST BE IN ${targetLanguage}
 
-Return your response in this JSON format:
+Return your response in this JSON format (with all text values in ${targetLanguage}):
 {
-  "simpleName": "Common name or brand",
-  "whatItDoes": "Simple 1-2 sentence explanation of purpose",
-  "howItWorks": "Brief friendly explanation of mechanism",
-  "commonSideEffects": ["List of common side effects"],
-  "importantPrecautions": ["List of precautions"],
-  "tips": ["Helpful tips for taking this medication"],
-  "foodInteractions": ["Foods to avoid or take with"],
-  "whenToCallDoctor": ["Warning signs to watch for"]
+  "simpleName": "Common name or brand in ${targetLanguage}",
+  "whatItDoes": "Simple 1-2 sentence explanation in ${targetLanguage}",
+  "howItWorks": "Brief friendly explanation in ${targetLanguage}",
+  "commonSideEffects": ["Side effects in ${targetLanguage}"],
+  "importantPrecautions": ["Precautions in ${targetLanguage}"],
+  "tips": ["Helpful tips in ${targetLanguage}"],
+  "foodInteractions": ["Food info in ${targetLanguage}"],
+  "whenToCallDoctor": ["Warning signs in ${targetLanguage}"]
 }`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {

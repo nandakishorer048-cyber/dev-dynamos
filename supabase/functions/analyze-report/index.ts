@@ -11,16 +11,33 @@ serve(async (req) => {
   }
 
   try {
-    const { reportText, reportType } = await req.json();
+    const { reportText, reportType, language = 'en' } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    console.log('Analyzing medical report:', { reportType, textLength: reportText?.length });
+    const languageNames: Record<string, string> = {
+      en: 'English',
+      es: 'Spanish',
+      fr: 'French',
+      de: 'German',
+      hi: 'Hindi',
+      pt: 'Portuguese',
+      ar: 'Arabic',
+      zh: 'Chinese',
+      ja: 'Japanese',
+      ko: 'Korean',
+    };
+
+    const targetLanguage = languageNames[language] || 'English';
+
+    console.log('Analyzing medical report:', { reportType, textLength: reportText?.length, language: targetLanguage });
 
     const systemPrompt = `You are a friendly, compassionate medical report analyzer. Your job is to help patients understand their medical reports in simple, easy-to-understand language.
+
+IMPORTANT: You MUST respond entirely in ${targetLanguage}. All text in your response must be in ${targetLanguage}.
 
 When analyzing a medical report:
 1. Identify key findings and values
@@ -35,20 +52,21 @@ Important guidelines:
 - Don't diagnose or provide medical advice
 - Encourage patients to discuss findings with their healthcare provider
 - Be encouraging while being honest about concerning findings
+- ALL TEXT MUST BE IN ${targetLanguage}
 
-Return your response in this JSON format:
+Return your response in this JSON format (with all text values in ${targetLanguage}):
 {
-  "summary": "A 2-3 sentence friendly overview",
+  "summary": "A 2-3 sentence friendly overview in ${targetLanguage}",
   "keyFindings": [
     {
-      "name": "Finding name",
+      "name": "Finding name in ${targetLanguage}",
       "value": "The value",
       "status": "normal" | "attention" | "concerning",
-      "explanation": "Simple explanation of what this means"
+      "explanation": "Simple explanation in ${targetLanguage}"
     }
   ],
-  "recommendations": ["List of friendly suggestions"],
-  "questionsForDoctor": ["Questions to discuss with healthcare provider"]
+  "recommendations": ["List of suggestions in ${targetLanguage}"],
+  "questionsForDoctor": ["Questions in ${targetLanguage}"]
 }`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
