@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Pill, 
   Plus, 
@@ -21,7 +22,8 @@ import {
   Edit,
   AlertTriangle,
   Info,
-  Heart
+  Heart,
+  Globe
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -67,7 +69,21 @@ export default function Medications() {
     frequency: '',
     purpose: '',
     startDate: '',
+    language: 'en',
   });
+
+  const LANGUAGES = [
+    { code: 'en', name: 'English' },
+    { code: 'es', name: 'Español' },
+    { code: 'fr', name: 'Français' },
+    { code: 'de', name: 'Deutsch' },
+    { code: 'hi', name: 'हिन्दी' },
+    { code: 'pt', name: 'Português' },
+    { code: 'ar', name: 'العربية' },
+    { code: 'zh', name: '中文' },
+    { code: 'ja', name: '日本語' },
+    { code: 'ko', name: '한국어' },
+  ];
 
   useEffect(() => {
     if (user) fetchMedications();
@@ -109,6 +125,7 @@ export default function Medications() {
           medicineName: newMed.name,
           dosage: newMed.dosage,
           purpose: newMed.purpose,
+          language: newMed.language,
         },
       });
 
@@ -137,7 +154,7 @@ export default function Medications() {
       if (saveError) throw saveError;
 
       setMedications([savedMed, ...medications]);
-      setNewMed({ name: '', dosage: '', frequency: '', purpose: '', startDate: '' });
+      setNewMed({ name: '', dosage: '', frequency: '', purpose: '', startDate: '', language: 'en' });
       setDialogOpen(false);
 
       toast({
@@ -267,14 +284,37 @@ export default function Medications() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="startDate">Start Date</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={newMed.startDate}
-                    onChange={(e) => setNewMed({ ...newMed, startDate: e.target.value })}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="startDate">Start Date</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={newMed.startDate}
+                      onChange={(e) => setNewMed({ ...newMed, startDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Globe className="h-4 w-4" />
+                      Explanation Language
+                    </Label>
+                    <Select 
+                      value={newMed.language} 
+                      onValueChange={(value) => setNewMed({ ...newMed, language: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LANGUAGES.map((lang) => (
+                          <SelectItem key={lang.code} value={lang.code}>
+                            {lang.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <Button 
