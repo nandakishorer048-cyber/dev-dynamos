@@ -81,17 +81,17 @@ export function EmergencyButton() {
         onClick={() => setIsOpen(true)}
         className={cn(
           "fixed bottom-6 right-6 z-50",
-          "flex items-center justify-center",
-          "h-16 w-16 rounded-full",
+          "flex items-center justify-center gap-2",
+          "h-14 px-5 rounded-full",
           "bg-destructive text-destructive-foreground",
           "shadow-lg hover:shadow-xl",
-          "transition-all duration-200 hover:scale-110",
-          "animate-pulse hover:animate-none",
-          "border-4 border-destructive-foreground/20"
+          "transition-all duration-200 hover:scale-105",
+          "font-semibold"
         )}
         aria-label="Emergency"
       >
-        <Siren className="h-8 w-8" />
+        <Siren className="h-5 w-5" />
+        <span>SOS</span>
       </button>
 
       {/* Emergency Dialog */}
