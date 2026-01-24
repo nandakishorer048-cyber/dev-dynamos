@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { EmergencyButton } from "@/components/EmergencyButton";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -49,51 +50,54 @@ function AppRoutes() {
   }
 
   return (
-    <Routes>
-      <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Index />} />
-      <Route path="/auth" element={user ? <Navigate to="/dashboard" replace /> : <Auth />} />
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/reports"
-        element={
-          <ProtectedRoute>
-            <Reports />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/medications"
-        element={
-          <ProtectedRoute>
-            <Medications />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/reminders"
-        element={
-          <ProtectedRoute>
-            <Reminders />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <Profile />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Index />} />
+        <Route path="/auth" element={user ? <Navigate to="/dashboard" replace /> : <Auth />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports"
+          element={
+            <ProtectedRoute>
+              <Reports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/medications"
+          element={
+            <ProtectedRoute>
+              <Medications />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reminders"
+          element={
+            <ProtectedRoute>
+              <Reminders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      {user && <EmergencyButton />}
+    </>
   );
 }
 
