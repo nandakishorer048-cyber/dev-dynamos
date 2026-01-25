@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { EmergencyButton } from "@/components/EmergencyButton";
+import { useReminderNotifications } from "@/hooks/useReminderNotifications";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -13,7 +14,6 @@ import Medications from "./pages/Medications";
 import Reminders from "./pages/Reminders";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
-
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -38,7 +38,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   const { user, loading } = useAuth();
-
+  
+  // Initialize reminder notifications with sound
+  useReminderNotifications();
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
