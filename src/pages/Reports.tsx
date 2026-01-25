@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   FileText, 
   Upload, 
@@ -21,7 +22,10 @@ import {
   Loader2,
   Trash2,
   Eye,
-  Globe
+  Globe,
+  Camera,
+  Image as ImageIcon,
+  FileImage
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -53,10 +57,13 @@ export default function Reports() {
   const { toast } = useToast();
   const [reports, setReports] = useState<MedicalReport[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<MedicalReport | null>(null);
+  const [inputMode, setInputMode] = useState<'text' | 'image'>('text');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [newReport, setNewReport] = useState({
     title: '',
@@ -83,6 +90,13 @@ export default function Reports() {
     if (user) fetchReports();
   }, [user]);
 
+  useEffect(() => {
+    // Cleanup preview URL on unmount
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   const fetchReports = async () => {
     const { data, error } = await supabase
       .from('medical_reports')
@@ -98,11 +112,74 @@ export default function Reports() {
     setLoading(false);
   };
 
-  const handleAnalyze = async () => {
-    if (!newReport.title || !newReport.reportText) {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+    if (!validTypes.includes(file.type)) {
       toast({
-        title: 'Missing information',
-        description: 'Please provide a title and report content.',
+        title: 'Invalid file type',
+        description: 'Please upload an image (JPEG, PNG, WebP) or PDF file.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: 'File too large',
+        description: 'Please upload a file smaller than 10MB.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSelectedFile(file);
+    
+    // Create preview for images
+    if (file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    } else {
+      setPreviewUrl(null);
+    }
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+    });
+  };
+
+  const handleAnalyze = async () => {
+    if (!newReport.title) {
+      toast({
+        title: 'Missing title',
+        description: 'Please provide a title for the report.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (inputMode === 'text' && !newReport.reportText) {
+      toast({
+        title: 'Missing content',
+        description: 'Please provide the report content.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (inputMode === 'image' && !selectedFile) {
+      toast({
+        title: 'No file selected',
+        description: 'Please upload an image or PDF of your report.',
         variant: 'destructive',
       });
       return;
@@ -111,12 +188,22 @@ export default function Reports() {
     setAnalyzing(true);
 
     try {
+      let requestBody: any = {
+        reportType: newReport.reportType,
+        language: newReport.language,
+      };
+
+      if (inputMode === 'text') {
+        requestBody.reportText = newReport.reportText;
+      } else if (selectedFile) {
+        const base64Data = await fileToBase64(selectedFile);
+        requestBody.imageData = base64Data;
+        requestBody.fileName = selectedFile.name;
+        requestBody.mimeType = selectedFile.type;
+      }
+
       const { data, error } = await supabase.functions.invoke('analyze-report', {
-        body: {
-          reportText: newReport.reportText,
-          reportType: newReport.reportType,
-          language: newReport.language,
-        },
+        body: requestBody,
       });
 
       if (error) throw error;
@@ -129,6 +216,7 @@ export default function Reports() {
           title: newReport.title,
           report_type: newReport.reportType,
           report_date: newReport.reportDate || null,
+          file_name: selectedFile?.name || null,
           ai_analysis: JSON.stringify(data.analysis),
           key_findings: data.analysis.keyFindings,
         })
@@ -138,7 +226,7 @@ export default function Reports() {
       if (saveError) throw saveError;
 
       setReports([savedReport, ...reports]);
-      setNewReport({ title: '', reportType: '', reportDate: '', reportText: '', language: 'en' });
+      resetForm();
       setDialogOpen(false);
 
       toast({
@@ -155,6 +243,14 @@ export default function Reports() {
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  const resetForm = () => {
+    setNewReport({ title: '', reportType: '', reportDate: '', reportText: '', language: 'en' });
+    setSelectedFile(null);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setInputMode('text');
   };
 
   const handleDelete = async (id: string) => {
@@ -211,7 +307,10 @@ export default function Reports() {
             <p className="text-muted-foreground">Upload and analyze your medical reports with AI</p>
           </div>
           
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) resetForm();
+          }}>
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Upload className="h-4 w-4" />
@@ -225,14 +324,14 @@ export default function Reports() {
                   Analyze Medical Report
                 </DialogTitle>
                 <DialogDescription>
-                  Paste your medical report text and our AI will explain it in simple terms.
+                  Upload an image/PDF or paste text from your medical report for AI analysis.
                 </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4 mt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="title">Report Title</Label>
+                    <Label htmlFor="title">Report Title *</Label>
                     <Input
                       id="title"
                       placeholder="e.g., Blood Test Results"
@@ -284,16 +383,87 @@ export default function Reports() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="content">Report Content</Label>
-                  <Textarea
-                    id="content"
-                    placeholder="Paste the content of your medical report here..."
-                    className="min-h-[200px]"
-                    value={newReport.reportText}
-                    onChange={(e) => setNewReport({ ...newReport, reportText: e.target.value })}
-                  />
-                </div>
+                {/* Input Mode Tabs */}
+                <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'text' | 'image')}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="text" className="gap-2">
+                      <FileText className="h-4 w-4" />
+                      Paste Text
+                    </TabsTrigger>
+                    <TabsTrigger value="image" className="gap-2">
+                      <Camera className="h-4 w-4" />
+                      Scan Image/PDF
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="text" className="space-y-2">
+                    <Label htmlFor="content">Report Content</Label>
+                    <Textarea
+                      id="content"
+                      placeholder="Paste the content of your medical report here..."
+                      className="min-h-[200px]"
+                      value={newReport.reportText}
+                      onChange={(e) => setNewReport({ ...newReport, reportText: e.target.value })}
+                    />
+                  </TabsContent>
+                  
+                  <TabsContent value="image" className="space-y-4">
+                    <div
+                      className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
+                        className="hidden"
+                        onChange={handleFileSelect}
+                      />
+                      
+                      {selectedFile ? (
+                        <div className="space-y-4">
+                          {previewUrl ? (
+                            <img 
+                              src={previewUrl} 
+                              alt="Preview" 
+                              className="max-h-48 mx-auto rounded-lg object-contain"
+                            />
+                          ) : (
+                            <FileImage className="h-16 w-16 mx-auto text-primary" />
+                          )}
+                          <div>
+                            <p className="font-medium">{selectedFile.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedFile(null);
+                              if (previewUrl) URL.revokeObjectURL(previewUrl);
+                              setPreviewUrl(null);
+                            }}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">Click to upload image or PDF</p>
+                            <p className="text-sm text-muted-foreground">
+                              JPEG, PNG, WebP, or PDF (max 10MB)
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
 
                 <Button 
                   onClick={handleAnalyze} 
@@ -351,6 +521,7 @@ export default function Reports() {
                         <CardTitle className="text-lg">{report.title}</CardTitle>
                         <CardDescription>
                           {report.report_type && `${report.report_type} • `}
+                          {report.file_name && <span className="text-primary">📎 Scanned • </span>}
                           {report.report_date 
                             ? format(new Date(report.report_date), 'MMM d, yyyy')
                             : format(new Date(report.created_at), 'MMM d, yyyy')
@@ -418,6 +589,7 @@ export default function Reports() {
                     <DialogTitle>{selectedReport.title}</DialogTitle>
                     <DialogDescription>
                       {selectedReport.report_type && `${selectedReport.report_type} • `}
+                      {selectedReport.file_name && `📎 ${selectedReport.file_name} • `}
                       {selectedReport.report_date 
                         ? format(new Date(selectedReport.report_date), 'MMMM d, yyyy')
                         : format(new Date(selectedReport.created_at), 'MMMM d, yyyy')

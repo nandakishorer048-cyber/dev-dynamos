@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { reportText, reportType, language = 'en' } = await req.json();
+    const { reportText, reportType, language = 'en', imageData, fileName, mimeType } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
@@ -32,14 +32,21 @@ serve(async (req) => {
     };
 
     const targetLanguage = languageNames[language] || 'English';
+    const isImageAnalysis = !!imageData;
 
-    console.log('Analyzing medical report:', { reportType, textLength: reportText?.length, language: targetLanguage });
+    console.log('Analyzing medical report:', { 
+      reportType, 
+      textLength: reportText?.length, 
+      language: targetLanguage,
+      isImageAnalysis,
+      fileName: fileName || 'N/A'
+    });
 
     const systemPrompt = `You are a friendly, compassionate medical report analyzer. Your job is to help patients understand their medical reports in simple, easy-to-understand language.
 
 IMPORTANT: You MUST respond entirely in ${targetLanguage}. All text in your response must be in ${targetLanguage}.
 
-When analyzing a medical report:
+When analyzing a medical report${isImageAnalysis ? ' (from an image or PDF scan)' : ''}:
 1. Identify key findings and values
 2. Explain what each finding means in plain language
 3. Highlight any values that are outside normal ranges
@@ -53,6 +60,7 @@ Important guidelines:
 - Encourage patients to discuss findings with their healthcare provider
 - Be encouraging while being honest about concerning findings
 - ALL TEXT MUST BE IN ${targetLanguage}
+${isImageAnalysis ? '- Extract all text and values you can see from the image/document\n- If parts are unclear, mention that in your analysis' : ''}
 
 Return your response in this JSON format (with all text values in ${targetLanguage}):
 {
@@ -69,6 +77,39 @@ Return your response in this JSON format (with all text values in ${targetLangua
   "questionsForDoctor": ["Questions in ${targetLanguage}"]
 }`;
 
+    // Build the messages array based on input type
+    const messages: any[] = [
+      { role: 'system', content: systemPrompt }
+    ];
+
+    if (isImageAnalysis) {
+      // For image analysis, use vision capabilities
+      const userContent: any[] = [
+        { 
+          type: 'text', 
+          text: `Please analyze this ${reportType || 'medical'} report image/document and extract all relevant information:` 
+        }
+      ];
+
+      // Add image data
+      if (imageData.startsWith('data:')) {
+        userContent.push({
+          type: 'image_url',
+          image_url: {
+            url: imageData
+          }
+        });
+      }
+
+      messages.push({ role: 'user', content: userContent });
+    } else {
+      // For text analysis
+      messages.push({ 
+        role: 'user', 
+        content: `Please analyze this ${reportType || 'medical'} report:\n\n${reportText}` 
+      });
+    }
+
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -77,10 +118,7 @@ Return your response in this JSON format (with all text values in ${targetLangua
       },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Please analyze this ${reportType || 'medical'} report:\n\n${reportText}` }
-        ],
+        messages,
         response_format: { type: "json_object" }
       }),
     });
