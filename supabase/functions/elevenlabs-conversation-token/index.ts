@@ -50,7 +50,25 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('ElevenLabs API error:', response.status, errorText);
-      throw new Error(`ElevenLabs API error: ${response.status}`);
+
+      // ElevenLabs often returns a helpful JSON error body.
+      let details: unknown = undefined;
+      try {
+        details = JSON.parse(errorText);
+      } catch {
+        details = errorText;
+      }
+
+      return new Response(
+        JSON.stringify({
+          error: `ElevenLabs API error: ${response.status}`,
+          details,
+        }),
+        {
+          status: response.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     const { signed_url } = await response.json();
