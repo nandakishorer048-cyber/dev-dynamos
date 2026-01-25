@@ -220,6 +220,45 @@ export type Database = {
         }
         Relationships: []
       }
+      vital_readings: {
+        Row: {
+          blood_sugar: number | null
+          created_at: string
+          diastolic_bp: number | null
+          id: string
+          notes: string | null
+          oxygen_level: number | null
+          pulse_rate: number | null
+          reading_date: string
+          systolic_bp: number | null
+          user_id: string
+        }
+        Insert: {
+          blood_sugar?: number | null
+          created_at?: string
+          diastolic_bp?: number | null
+          id?: string
+          notes?: string | null
+          oxygen_level?: number | null
+          pulse_rate?: number | null
+          reading_date?: string
+          systolic_bp?: number | null
+          user_id: string
+        }
+        Update: {
+          blood_sugar?: number | null
+          created_at?: string
+          diastolic_bp?: number | null
+          id?: string
+          notes?: string | null
+          oxygen_level?: number | null
+          pulse_rate?: number | null
+          reading_date?: string
+          systolic_bp?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

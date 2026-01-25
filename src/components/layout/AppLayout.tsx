@@ -8,7 +8,8 @@ import {
   User,
   LogOut,
   Menu,
-  X
+  X,
+  Activity
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,6 +23,7 @@ interface AppLayoutProps {
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: Home },
   { path: '/reports', label: 'Reports', icon: FileText },
+  { path: '/vitals', label: 'Vitals', icon: Activity },
   { path: '/medications', label: 'Medications', icon: Pill },
   { path: '/reminders', label: 'Reminders', icon: Bell },
   { path: '/profile', label: 'Profile', icon: User },

@@ -13,6 +13,7 @@ import Reports from "./pages/Reports";
 import Medications from "./pages/Medications";
 import Reminders from "./pages/Reminders";
 import Profile from "./pages/Profile";
+import Vitals from "./pages/Vitals";
 import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
@@ -85,6 +86,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Reminders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vitals"
+          element={
+            <ProtectedRoute>
+              <Vitals />
             </ProtectedRoute>
           }
         />
