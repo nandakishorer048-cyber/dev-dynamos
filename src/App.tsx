@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { EmergencyButton } from "@/components/EmergencyButton";
+import { PatientChatbot } from "@/components/chat/PatientChatbot";
 import { useReminderNotifications } from "@/hooks/useReminderNotifications";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -108,6 +109,7 @@ function AppRoutes() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       {user && <EmergencyButton />}
+      {user && <PatientChatbot />}
     </>
   );
 }
