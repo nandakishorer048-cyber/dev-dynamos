@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { VoiceAssistant } from '@/components/VoiceAssistant';
+import { GamificationCard } from '@/components/gamification/GamificationCard';
 import { 
   FileText, 
   Pill, 
@@ -278,34 +279,37 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Quick Actions */}
-          <Card className="shadow-soft">
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Get started quickly</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button className="w-full justify-start gap-3" variant="outline" asChild>
-                <Link to="/reports?action=upload">
-                  <FileText className="h-4 w-4" />
-                  Upload Report
-                </Link>
-              </Button>
-              <Button className="w-full justify-start gap-3" variant="outline" asChild>
-                <Link to="/medications?action=add">
-                  <Pill className="h-4 w-4" />
-                  Add Medication
-                </Link>
-              </Button>
-              <Button className="w-full justify-start gap-3" variant="outline" asChild>
-                <Link to="/reminders?action=add">
-                  <Bell className="h-4 w-4" />
-                  Set Reminder
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+          {/* Gamification Card */}
+          <GamificationCard />
         </div>
+
+        {/* Quick Actions */}
+        <Card className="shadow-soft">
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>Get started quickly</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-3">
+            <Button className="gap-3" variant="outline" asChild>
+              <Link to="/reports?action=upload">
+                <FileText className="h-4 w-4" />
+                Upload Report
+              </Link>
+            </Button>
+            <Button className="gap-3" variant="outline" asChild>
+              <Link to="/medications?action=add">
+                <Pill className="h-4 w-4" />
+                Add Medication
+              </Link>
+            </Button>
+            <Button className="gap-3" variant="outline" asChild>
+              <Link to="/reminders?action=add">
+                <Bell className="h-4 w-4" />
+                Set Reminder
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Voice Assistant */}
         <VoiceAssistant />

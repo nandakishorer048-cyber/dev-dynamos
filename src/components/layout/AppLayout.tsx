@@ -9,7 +9,8 @@ import {
   LogOut,
   Menu,
   X,
-  Activity
+  Activity,
+  Gift
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,6 +27,7 @@ const navItems = [
   { path: '/vitals', label: 'Vitals', icon: Activity },
   { path: '/medications', label: 'Medications', icon: Pill },
   { path: '/reminders', label: 'Reminders', icon: Bell },
+  { path: '/rewards', label: 'Rewards', icon: Gift },
   { path: '/profile', label: 'Profile', icon: User },
 ];
 
