@@ -57,7 +57,7 @@ export function EmergencyButton() {
     {
       name: 'Share My Location',
       icon: MapPin,
-      color: 'bg-primary hover:bg-primary/90 text-primary-foreground',
+      color: 'bg-gradient-to-r from-primary to-health-mint hover:from-primary/90 hover:to-health-mint/90 text-primary-foreground',
       action: handleShareLocation,
     },
     {
@@ -69,24 +69,25 @@ export function EmergencyButton() {
     {
       name: 'Medical Info',
       icon: Heart,
-      color: 'bg-health-coral hover:bg-health-coral/90 text-white',
+      color: 'bg-gradient-to-r from-health-purple to-health-blue hover:from-health-purple/90 hover:to-health-blue/90 text-primary-foreground',
       action: () => window.location.href = '/profile',
     },
   ];
 
   return (
     <>
-      {/* Floating Emergency Button */}
+      {/* Floating Emergency Button with glassmorphism */}
       <button
         onClick={() => setIsOpen(true)}
         className={cn(
           "fixed bottom-6 right-6 z-50",
           "flex items-center justify-center gap-2",
-          "h-14 px-5 rounded-full",
-          "bg-destructive text-destructive-foreground",
-          "shadow-lg hover:shadow-xl",
-          "transition-all duration-200 hover:scale-105",
-          "font-semibold"
+          "h-14 px-5 rounded-2xl",
+          "bg-destructive/90 text-destructive-foreground",
+          "backdrop-blur-md border border-destructive/30",
+          "shadow-elevated hover:shadow-glow",
+          "transition-all duration-300 hover:scale-105",
+          "font-semibold sos-pulse"
         )}
         aria-label="Emergency"
       >
@@ -96,10 +97,12 @@ export function EmergencyButton() {
 
       {/* Emergency Dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-sm border-destructive/50">
+        <DialogContent className="max-w-sm border-destructive/50 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-6 w-6" />
+              <div className="h-10 w-10 rounded-xl bg-destructive/10 flex items-center justify-center">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
               Emergency Services
             </DialogTitle>
             <DialogDescription>
@@ -112,7 +115,7 @@ export function EmergencyButton() {
               <Button
                 key={service.name}
                 onClick={service.action}
-                className={cn("w-full h-14 text-lg gap-3 justify-start", service.color)}
+                className={cn("w-full h-14 text-lg gap-3 justify-start rounded-xl shadow-md", service.color)}
               >
                 <service.icon className="h-6 w-6" />
                 {service.name}
@@ -123,7 +126,7 @@ export function EmergencyButton() {
           <Button
             variant="outline"
             onClick={() => setIsOpen(false)}
-            className="mt-4 gap-2"
+            className="mt-4 gap-2 rounded-xl"
           >
             <X className="h-4 w-4" />
             Cancel
@@ -133,7 +136,7 @@ export function EmergencyButton() {
 
       {/* Call Confirmation Dialog */}
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
-        <DialogContent className="max-w-xs border-destructive">
+        <DialogContent className="max-w-xs border-destructive rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-center text-destructive">
               Call 911?
@@ -146,7 +149,7 @@ export function EmergencyButton() {
           <div className="grid gap-3 mt-4">
             <Button
               onClick={handleEmergencyCall}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground h-14 text-lg gap-2"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground h-14 text-lg gap-2 rounded-xl"
             >
               <Phone className="h-6 w-6" />
               Yes, Call 911
@@ -154,6 +157,7 @@ export function EmergencyButton() {
             <Button
               variant="outline"
               onClick={() => setShowConfirm(false)}
+              className="rounded-xl"
             >
               Cancel
             </Button>
