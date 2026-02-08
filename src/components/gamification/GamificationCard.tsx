@@ -62,7 +62,7 @@ export function GamificationCard() {
 
   return (
     <Card className="shadow-soft overflow-hidden">
-      <CardHeader className="bg-gradient-to-r from-primary/10 via-purple-500/10 to-pink-500/10">
+      <CardHeader className="bg-gradient-to-r from-primary/10 via-health-purple/10 to-health-blue/10">
         <CardTitle className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
           Your Progress
@@ -72,19 +72,19 @@ export function GamificationCard() {
       <CardContent className="p-6 space-y-6">
         {/* Stats Row */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="text-center p-4 rounded-xl bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/20">
-            <Star className="h-6 w-6 mx-auto mb-2 text-yellow-500" />
-            <p className="text-2xl font-bold text-yellow-600">{gamificationData?.totalPoints || 0}</p>
+          <div className="text-center p-4 rounded-xl bg-gradient-to-br from-primary/10 to-health-blue/10 border border-primary/20">
+            <Star className="h-6 w-6 mx-auto mb-2 text-primary" />
+            <p className="text-2xl font-bold text-primary">{gamificationData?.totalPoints || 0}</p>
             <p className="text-xs text-muted-foreground">Total Points</p>
           </div>
-          <div className="text-center p-4 rounded-xl bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/20">
-            <Flame className="h-6 w-6 mx-auto mb-2 text-orange-500" />
-            <p className="text-2xl font-bold text-orange-600">{gamificationData?.currentStreak || 0}</p>
+          <div className="text-center p-4 rounded-xl bg-gradient-to-br from-health-purple/10 to-accent/20 border border-health-purple/20">
+            <Flame className="h-6 w-6 mx-auto mb-2 text-health-purple" />
+            <p className="text-2xl font-bold text-health-purple">{gamificationData?.currentStreak || 0}</p>
             <p className="text-xs text-muted-foreground">Day Streak</p>
           </div>
-          <div className="text-center p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20">
-            <Trophy className="h-6 w-6 mx-auto mb-2 text-purple-500" />
-            <p className="text-2xl font-bold text-purple-600">{earnedBadges.length}</p>
+          <div className="text-center p-4 rounded-xl bg-gradient-to-br from-health-blue/10 to-primary/10 border border-health-blue/20">
+            <Trophy className="h-6 w-6 mx-auto mb-2 text-health-blue" />
+            <p className="text-2xl font-bold text-health-blue">{earnedBadges.length}</p>
             <p className="text-xs text-muted-foreground">Badges</p>
           </div>
         </div>
@@ -101,7 +101,7 @@ export function GamificationCard() {
               <p className="text-sm text-muted-foreground">Don't break your streak!</p>
               <Button 
                 onClick={performDailyCheckIn}
-                className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
+                className="bg-gradient-to-r from-primary to-health-blue hover:from-primary/90 hover:to-health-blue/90"
               >
                 <Sparkles className="h-4 w-4 mr-2" />
                 Daily Check-in (+10 pts)
@@ -126,7 +126,7 @@ export function GamificationCard() {
                   className={cn(
                     'flex items-center justify-center h-10 w-10 rounded-full transition-all',
                     isEarned
-                      ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-lg'
+                      ? 'bg-gradient-to-br from-primary to-health-blue text-white shadow-lg'
                       : 'bg-muted text-muted-foreground opacity-50'
                   )}
                   title={`${badge.name}: ${badge.description}`}
