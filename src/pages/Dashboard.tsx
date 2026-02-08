@@ -13,11 +13,11 @@ import {
   Pill, 
   Bell, 
   TrendingUp, 
-  Plus,
   Check,
   Clock,
   Calendar,
-  Mic
+  Plus,
+  Sparkles
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -153,80 +153,94 @@ export default function Dashboard() {
     <AppLayout>
       <div className="space-y-8 animate-fade-in">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">
-            {getGreeting()}, {firstName}! 👋
+        <div className="space-y-1">
+          <h1 className="text-3xl md:text-4xl font-heading font-bold text-foreground">
+            {getGreeting()}, <span className="gradient-text">{firstName}</span>! 👋
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground text-lg">
             Here's your health overview for {format(new Date(), 'EEEE, MMMM d')}
           </p>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="shadow-soft">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Medical Reports */}
+          <Card className="hover-lift">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Medical Reports
               </CardTitle>
-              <FileText className="h-4 w-4 text-health-blue" />
+              <div className="icon-container-blue">
+                <FileText className="h-5 w-5 text-health-blue" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalReports}</div>
-              <Link to="/reports" className="text-xs text-primary hover:underline">
+              <div className="stat-number">{stats.totalReports}</div>
+              <Link to="/reports" className="text-sm text-primary hover:underline font-medium mt-2 inline-block">
                 View all reports →
               </Link>
             </CardContent>
           </Card>
 
-          <Card className="shadow-soft">
+          {/* Active Medications */}
+          <Card className="hover-lift">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Active Medications
               </CardTitle>
-              <Pill className="h-4 w-4 text-health-purple" />
+              <div className="icon-container-purple">
+                <Pill className="h-5 w-5 text-health-purple" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.activeMedications}</div>
-              <Link to="/medications" className="text-xs text-primary hover:underline">
+              <div className="stat-number">{stats.activeMedications}</div>
+              <Link to="/medications" className="text-sm text-primary hover:underline font-medium mt-2 inline-block">
                 Manage medications →
               </Link>
             </CardContent>
           </Card>
 
-          <Card className="shadow-soft">
+          {/* Today's Reminders */}
+          <Card className="hover-lift">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Today's Reminders
               </CardTitle>
-              <Bell className="h-4 w-4 text-warning" />
+              <div className="icon-container-warning">
+                <Bell className="h-5 w-5 text-warning" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.todayReminders}</div>
-              <Link to="/reminders" className="text-xs text-primary hover:underline">
+              <div className="stat-number">{stats.todayReminders}</div>
+              <Link to="/reminders" className="text-sm text-primary hover:underline font-medium mt-2 inline-block">
                 View schedule →
               </Link>
             </CardContent>
           </Card>
 
-          <Card className="shadow-soft">
+          {/* Adherence Rate */}
+          <Card className="hover-lift">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Adherence Rate
               </CardTitle>
-              <TrendingUp className="h-4 w-4 text-success" />
+              <div className="icon-container-success">
+                <TrendingUp className="h-5 w-5 text-success" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.adherenceRate}%</div>
-              <Progress value={stats.adherenceRate} className="mt-2 h-2" />
+              <div className="stat-number">{stats.adherenceRate}%</div>
+              <div className="progress-gradient mt-3">
+                <Progress value={stats.adherenceRate} className="h-2.5 rounded-full" />
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Today's Medications & Quick Actions */}
+        {/* Today's Medications & Gamification */}
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Today's Medications */}
-          <Card className="lg:col-span-2 shadow-soft">
+          <Card className="lg:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
@@ -235,17 +249,32 @@ export default function Dashboard() {
                 </CardTitle>
                 <CardDescription>Your scheduled doses for today</CardDescription>
               </div>
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild className="rounded-xl">
                 <Link to="/reminders">View All</Link>
               </Button>
             </CardHeader>
             <CardContent>
               {todayMeds.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Pill className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>No medications scheduled for today</p>
-                  <Button variant="link" asChild className="mt-2">
-                    <Link to="/medications">Add a medication</Link>
+                <div className="text-center py-12 px-4">
+                  <div className="flex justify-center mb-4">
+                    <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary/20 to-health-mint/20 flex items-center justify-center animate-float">
+                      <Pill className="h-10 w-10 text-primary" />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-heading font-semibold text-foreground mb-2">
+                    No medications scheduled
+                  </h3>
+                  <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
+                    Start managing your health by adding your first medication. We'll help you stay on track!
+                  </p>
+                  <Button 
+                    asChild 
+                    className="rounded-xl bg-gradient-to-r from-primary to-health-mint hover:from-primary/90 hover:to-health-mint/90 shadow-warm"
+                  >
+                    <Link to="/medications" className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add Your First Medication
+                    </Link>
                   </Button>
                 </div>
               ) : (
@@ -253,24 +282,28 @@ export default function Dashboard() {
                   {todayMeds.map((med) => (
                     <div
                       key={med.id}
-                      className={`flex items-center justify-between p-4 rounded-lg border ${
-                        med.taken ? 'bg-success/10 border-success/30' : 'bg-muted/50'
+                      className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200 hover:shadow-md ${
+                        med.taken 
+                          ? 'bg-gradient-to-r from-success/10 to-success/5 border-success/30' 
+                          : 'bg-muted/30 border-border hover:border-primary/30'
                       }`}
                     >
                       <div className="flex items-center gap-4">
-                        <div className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                          med.taken ? 'bg-success text-success-foreground' : 'bg-primary/10 text-primary'
+                        <div className={`flex h-12 w-12 items-center justify-center rounded-xl transition-all ${
+                          med.taken 
+                            ? 'bg-gradient-to-br from-success to-success/80 text-success-foreground shadow-md' 
+                            : 'bg-gradient-to-br from-primary/15 to-primary/5 text-primary'
                         }`}>
-                          {med.taken ? <Check className="h-5 w-5" /> : <Pill className="h-5 w-5" />}
+                          {med.taken ? <Check className="h-6 w-6" /> : <Pill className="h-6 w-6" />}
                         </div>
                         <div>
-                          <p className="font-medium">{med.name}</p>
+                          <p className="font-semibold text-foreground">{med.name}</p>
                           <p className="text-sm text-muted-foreground">{med.dosage}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
+                      <div className="flex items-center gap-2 text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-lg">
                         <Clock className="h-4 w-4" />
-                        <span className="text-sm">{med.time}</span>
+                        <span className="text-sm font-medium">{med.time}</span>
                       </div>
                     </div>
                   ))}
@@ -284,25 +317,28 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        <Card className="shadow-soft">
+        <Card>
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Get started quickly</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Quick Actions
+            </CardTitle>
+            <CardDescription>Get started quickly with common tasks</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
-            <Button className="gap-3" variant="outline" asChild>
+            <Button className="gap-2 rounded-xl" variant="outline" asChild>
               <Link to="/reports?action=upload">
                 <FileText className="h-4 w-4" />
                 Upload Report
               </Link>
             </Button>
-            <Button className="gap-3" variant="outline" asChild>
+            <Button className="gap-2 rounded-xl" variant="outline" asChild>
               <Link to="/medications?action=add">
                 <Pill className="h-4 w-4" />
                 Add Medication
               </Link>
             </Button>
-            <Button className="gap-3" variant="outline" asChild>
+            <Button className="gap-2 rounded-xl" variant="outline" asChild>
               <Link to="/reminders?action=add">
                 <Bell className="h-4 w-4" />
                 Set Reminder
