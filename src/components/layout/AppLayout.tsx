@@ -10,7 +10,8 @@ import {
   Menu,
   X,
   Activity,
-  Gift
+  Gift,
+  Stethoscope
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
