@@ -10,7 +10,8 @@ import {
   Menu,
   X,
   Activity,
-  Gift
+  Gift,
+  Stethoscope
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,6 +24,7 @@ interface AppLayoutProps {
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: Home },
+  { path: '/healthcare', label: 'Health Check', icon: Stethoscope },
   { path: '/reports', label: 'Reports', icon: FileText },
   { path: '/vitals', label: 'Vitals', icon: Activity },
   { path: '/medications', label: 'Medications', icon: Pill },
