@@ -109,6 +109,14 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/healthcare"
+          element={
+            <ProtectedRoute>
+              <HealthcareFlow />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/profile"
           element={
             <ProtectedRoute>
