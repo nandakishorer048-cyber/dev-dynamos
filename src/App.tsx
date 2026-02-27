@@ -16,6 +16,7 @@ import Reminders from "./pages/Reminders";
 import Profile from "./pages/Profile";
 import Vitals from "./pages/Vitals";
 import Rewards from "./pages/Rewards";
+import HealthcareFlow from "./pages/HealthcareFlow";
 import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
