@@ -76,30 +76,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName
+
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            full_name: fullName
+          }
         }
-      }
-    });
-    return { error };
+      });
+      return { error };
+    } catch (err) {
+      await clearCorruptedSession();
+      return { error: err instanceof Error ? err : new Error('Failed to fetch') };
+    }
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    return { error };
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      return { error };
+    } catch (err) {
+      await clearCorruptedSession();
+      return { error: err instanceof Error ? err : new Error('Failed to fetch') };
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
   };
 
   return (
