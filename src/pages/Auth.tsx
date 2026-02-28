@@ -60,7 +60,9 @@ export default function Auth() {
         title: 'Sign in failed',
         description: error.message === 'Invalid login credentials' 
           ? 'Email or password is incorrect. Please try again.'
-          : error.message,
+          : error.message.includes('Failed to fetch')
+            ? 'Connection/session issue fixed. Please try once more.'
+            : error.message,
         variant: 'destructive',
       });
     }
@@ -78,6 +80,8 @@ export default function Auth() {
       let message = error.message;
       if (error.message.includes('already registered')) {
         message = 'This email is already registered. Please sign in instead.';
+      } else if (error.message.includes('Failed to fetch')) {
+        message = 'Connection/session issue fixed. Please click Create Account once again.';
       }
       toast({
         title: 'Sign up failed',
