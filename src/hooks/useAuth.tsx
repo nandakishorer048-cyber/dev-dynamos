@@ -73,6 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let isMounted = true;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if ((event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && !session && !hasRecoveredSessionRef.current) {
@@ -80,25 +82,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await clearCorruptedSession();
         }
 
+        if (session) {
+          await supabase.auth.startAutoRefresh();
+        } else {
+          await supabase.auth.stopAutoRefresh();
+        }
+
+        if (!isMounted) return;
+
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
-      if (error) {
-        await clearCorruptedSession();
-        setSession(null);
-        setUser(null);
-      } else {
+    const initializeSession = async () => {
+      try {
+        await supabase.auth.stopAutoRefresh();
+
+        if (hasClearlyCorruptedStoredSession()) {
+          hasRecoveredSessionRef.current = true;
+          await clearCorruptedSession();
+        }
+
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        const hasInvalidRefreshToken = Boolean(session && (!session.refresh_token || session.refresh_token.length < 20));
+
+        if (error || hasInvalidRefreshToken) {
+          await clearCorruptedSession();
+          if (!isMounted) return;
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
+        if (session) {
+          await supabase.auth.startAutoRefresh();
+        }
+
+        if (!isMounted) return;
         setSession(session);
         setUser(session?.user ?? null);
+      } catch {
+        await clearCorruptedSession();
+        if (!isMounted) return;
+        setSession(null);
+        setUser(null);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-      setLoading(false);
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    void initializeSession();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+      void supabase.auth.stopAutoRefresh();
+    };
   }, []);
 
 
