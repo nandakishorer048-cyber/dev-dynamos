@@ -80,6 +80,8 @@ export default function Auth() {
       let message = error.message;
       if (error.message.includes('already registered')) {
         message = 'This email is already registered. Please sign in instead.';
+      } else if (error.message.includes('Failed to fetch')) {
+        message = 'Connection/session issue fixed. Please click Create Account once again.';
       }
       toast({
         title: 'Sign up failed',

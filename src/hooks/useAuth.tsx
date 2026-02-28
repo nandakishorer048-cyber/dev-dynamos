@@ -77,34 +77,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, fullName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
 
-    try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            full_name: fullName
-          }
+    const executeSignUp = () => supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          full_name: fullName
         }
-      });
+      }
+    });
+
+    try {
+      const { error } = await executeSignUp();
       return { error };
     } catch (err) {
       await clearCorruptedSession();
-      return { error: err instanceof Error ? err : new Error('Failed to fetch') };
+      try {
+        const { error } = await executeSignUp();
+        return { error };
+      } catch (retryErr) {
+        return { error: retryErr instanceof Error ? retryErr : new Error('Failed to fetch') };
+      }
     }
   };
 
   const signIn = async (email: string, password: string) => {
+    const executeSignIn = () => supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      const { error } = await executeSignIn();
       return { error };
     } catch (err) {
       await clearCorruptedSession();
-      return { error: err instanceof Error ? err : new Error('Failed to fetch') };
+      try {
+        const { error } = await executeSignIn();
+        return { error };
+      } catch (retryErr) {
+        return { error: retryErr instanceof Error ? retryErr : new Error('Failed to fetch') };
+      }
     }
   };
 
