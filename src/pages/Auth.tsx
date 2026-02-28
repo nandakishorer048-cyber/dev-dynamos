@@ -60,7 +60,9 @@ export default function Auth() {
         title: 'Sign in failed',
         description: error.message === 'Invalid login credentials' 
           ? 'Email or password is incorrect. Please try again.'
-          : error.message,
+          : error.message.includes('Failed to fetch')
+            ? 'Connection/session issue fixed. Please try once more.'
+            : error.message,
         variant: 'destructive',
       });
     }
