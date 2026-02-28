@@ -23,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearCorruptedSession = async () => {
     try {
+      await supabase.auth.stopAutoRefresh();
       await supabase.auth.signOut({ scope: 'local' });
     } catch {
       // noop
@@ -30,21 +31,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID as string | undefined;
+      const keysToRemove = Object.keys(localStorage).filter(
+        (key) => key.startsWith('sb-') && key.endsWith('-auth-token')
+      );
+
       if (projectId) {
-        localStorage.removeItem(`sb-${projectId}-auth-token`);
+        keysToRemove.push(`sb-${projectId}-auth-token`);
       }
 
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
-          localStorage.removeItem(key);
-        }
-      });
+      [...new Set(keysToRemove)].forEach((key) => localStorage.removeItem(key));
     } catch {
       // noop
     }
   };
 
+  const hasClearlyCorruptedStoredSession = () => {
+    try {
+      const authKeys = Object.keys(localStorage).filter(
+        (key) => key.startsWith('sb-') && key.endsWith('-auth-token')
+      );
+
+      if (authKeys.length === 0) return false;
+
+      return authKeys.some((key) => {
+        const raw = localStorage.getItem(key);
+        if (!raw) return true;
+
+        try {
+          const parsed = JSON.parse(raw);
+          const sessionLike = parsed?.currentSession ?? parsed;
+          const refreshToken = sessionLike?.refresh_token ?? sessionLike?.refreshToken;
+
+          return typeof refreshToken !== 'string' || refreshToken.length < 20;
+        } catch {
+          return true;
+        }
+      });
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
+    let isMounted = true;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if ((event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && !session && !hasRecoveredSessionRef.current) {
@@ -52,25 +82,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await clearCorruptedSession();
         }
 
+        if (session) {
+          await supabase.auth.startAutoRefresh();
+        } else {
+          await supabase.auth.stopAutoRefresh();
+        }
+
+        if (!isMounted) return;
+
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
-      if (error) {
-        await clearCorruptedSession();
-        setSession(null);
-        setUser(null);
-      } else {
+    const initializeSession = async () => {
+      try {
+        await supabase.auth.stopAutoRefresh();
+
+        if (hasClearlyCorruptedStoredSession()) {
+          hasRecoveredSessionRef.current = true;
+          await clearCorruptedSession();
+        }
+
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        const hasInvalidRefreshToken = Boolean(session && (!session.refresh_token || session.refresh_token.length < 20));
+
+        if (error || hasInvalidRefreshToken) {
+          await clearCorruptedSession();
+          if (!isMounted) return;
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
+        if (session) {
+          await supabase.auth.startAutoRefresh();
+        }
+
+        if (!isMounted) return;
         setSession(session);
         setUser(session?.user ?? null);
+      } catch {
+        await clearCorruptedSession();
+        if (!isMounted) return;
+        setSession(null);
+        setUser(null);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-      setLoading(false);
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    void initializeSession();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+      void supabase.auth.stopAutoRefresh();
+    };
   }, []);
 
 
