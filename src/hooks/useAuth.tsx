@@ -18,23 +18,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+
+  const hasRecoveredSessionRef = useRef(false);
+
+  const clearCorruptedSession = async () => {
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // noop
+    }
+
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID as string | undefined;
+      if (projectId) {
+        localStorage.removeItem(`sb-${projectId}-auth-token`);
+      }
+
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch {
+      // noop
+    }
+  };
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === 'TOKEN_REFRESHED' && !session) {
-          // Token refresh failed - clear stale session
-          supabase.auth.signOut();
+      async (event, session) => {
+        if ((event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && !session && !hasRecoveredSessionRef.current) {
+          hasRecoveredSessionRef.current = true;
+          await clearCorruptedSession();
         }
+
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
       if (error) {
-        // Clear corrupted session data
-        supabase.auth.signOut();
+        await clearCorruptedSession();
         setSession(null);
         setUser(null);
       } else {
@@ -46,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
