@@ -23,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearCorruptedSession = async () => {
     try {
+      await supabase.auth.stopAutoRefresh();
       await supabase.auth.signOut({ scope: 'local' });
     } catch {
       // noop
@@ -30,17 +31,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID as string | undefined;
+      const keysToRemove = Object.keys(localStorage).filter(
+        (key) => key.startsWith('sb-') && key.endsWith('-auth-token')
+      );
+
       if (projectId) {
-        localStorage.removeItem(`sb-${projectId}-auth-token`);
+        keysToRemove.push(`sb-${projectId}-auth-token`);
       }
 
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
-          localStorage.removeItem(key);
+      [...new Set(keysToRemove)].forEach((key) => localStorage.removeItem(key));
+    } catch {
+      // noop
+    }
+  };
+
+  const hasClearlyCorruptedStoredSession = () => {
+    try {
+      const authKeys = Object.keys(localStorage).filter(
+        (key) => key.startsWith('sb-') && key.endsWith('-auth-token')
+      );
+
+      if (authKeys.length === 0) return false;
+
+      return authKeys.some((key) => {
+        const raw = localStorage.getItem(key);
+        if (!raw) return true;
+
+        try {
+          const parsed = JSON.parse(raw);
+          const sessionLike = parsed?.currentSession ?? parsed;
+          const refreshToken = sessionLike?.refresh_token ?? sessionLike?.refreshToken;
+
+          return typeof refreshToken !== 'string' || refreshToken.length < 20;
+        } catch {
+          return true;
         }
       });
     } catch {
-      // noop
+      return false;
     }
   };
 
