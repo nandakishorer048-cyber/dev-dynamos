@@ -106,14 +106,11 @@ export default function Auth() {
     setLoading(false);
 
     if (error) {
+      const feedback = getAuthErrorFeedback('signin', error.message);
       toast({
-        title: 'Sign in failed',
-        description: error.message === 'Invalid login credentials' 
-          ? 'Email or password is incorrect. Please try again.'
-          : error.message.includes('Failed to fetch')
-            ? 'Connection/session issue fixed. Please try once more.'
-            : error.message,
-        variant: 'destructive',
+        title: feedback.title,
+        description: feedback.description,
+        variant: feedback.variant,
       });
     }
   };
