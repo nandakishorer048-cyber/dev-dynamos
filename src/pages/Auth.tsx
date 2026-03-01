@@ -47,6 +47,56 @@ export default function Auth() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const getAuthErrorFeedback = (mode: 'signin' | 'signup', rawMessage: string) => {
+    const message = rawMessage.toLowerCase();
+
+    if (message.includes('email not confirmed')) {
+      return {
+        title: 'Verify your email',
+        description: 'Please confirm your email from your inbox, then sign in.',
+        variant: 'default' as const,
+      };
+    }
+
+    if (message.includes('email rate limit exceeded')) {
+      return {
+        title: 'Too many attempts',
+        description: 'Please wait about a minute, then try again.',
+        variant: 'default' as const,
+      };
+    }
+
+    if (message.includes('already registered')) {
+      return {
+        title: mode === 'signup' ? 'Account already exists' : 'Sign in failed',
+        description: 'This email is already registered. Please sign in instead.',
+        variant: 'default' as const,
+      };
+    }
+
+    if (message.includes('failed to fetch')) {
+      return {
+        title: 'Temporary connection issue',
+        description: 'Session was refreshed. Please click once again.',
+        variant: 'default' as const,
+      };
+    }
+
+    if (message.includes('invalid login credentials')) {
+      return {
+        title: 'Sign in failed',
+        description: 'Email or password is incorrect. Please try again.',
+        variant: 'destructive' as const,
+      };
+    }
+
+    return {
+      title: mode === 'signup' ? 'Sign up failed' : 'Sign in failed',
+      description: rawMessage,
+      variant: 'destructive' as const,
+    };
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
