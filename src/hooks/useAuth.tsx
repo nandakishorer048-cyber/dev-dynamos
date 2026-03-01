@@ -23,7 +23,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearCorruptedSession = async () => {
     try {
-      await supabase.auth.stopAutoRefresh();
       await supabase.auth.signOut({ scope: 'local' });
     } catch {
       // noop
@@ -75,31 +74,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if ((event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && !session && !hasRecoveredSessionRef.current) {
-          hasRecoveredSessionRef.current = true;
-          await clearCorruptedSession();
-        }
+    const runAfterAuthCallback = (work: () => Promise<void> | void) => {
+      window.setTimeout(() => {
+        void Promise.resolve(work()).catch(() => {
+          // noop
+        });
+      }, 0);
+    };
 
-        if (session) {
-          await supabase.auth.startAutoRefresh();
-        } else {
-          await supabase.auth.stopAutoRefresh();
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (!isMounted) return;
 
-        if (!isMounted) return;
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      setLoading(false);
 
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+      if ((event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && !nextSession && !hasRecoveredSessionRef.current) {
+        hasRecoveredSessionRef.current = true;
+        runAfterAuthCallback(clearCorruptedSession);
       }
-    );
+    });
 
     const initializeSession = async () => {
       try {
-        await supabase.auth.stopAutoRefresh();
-
         if (hasClearlyCorruptedStoredSession()) {
           hasRecoveredSessionRef.current = true;
           await clearCorruptedSession();
@@ -116,10 +113,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
           setLoading(false);
           return;
-        }
-
-        if (session) {
-          await supabase.auth.startAutoRefresh();
         }
 
         if (!isMounted) return;
@@ -140,7 +133,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       isMounted = false;
       subscription.unsubscribe();
-      void supabase.auth.stopAutoRefresh();
     };
   }, []);
 
