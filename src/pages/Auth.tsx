@@ -124,21 +124,16 @@ export default function Auth() {
     setLoading(false);
 
     if (error) {
-      let message = error.message;
-      if (error.message.includes('already registered')) {
-        message = 'This email is already registered. Please sign in instead.';
-      } else if (error.message.includes('Failed to fetch')) {
-        message = 'Connection/session issue fixed. Please click Create Account once again.';
-      }
+      const feedback = getAuthErrorFeedback('signup', error.message);
       toast({
-        title: 'Sign up failed',
-        description: message,
-        variant: 'destructive',
+        title: feedback.title,
+        description: feedback.description,
+        variant: feedback.variant,
       });
     } else {
       toast({
         title: 'Welcome to Mediguide! 🎉',
-        description: 'Your account has been created successfully.',
+        description: 'Account created. Please confirm your email before signing in.',
       });
     }
   };
