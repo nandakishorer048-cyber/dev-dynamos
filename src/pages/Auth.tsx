@@ -47,6 +47,56 @@ export default function Auth() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const getAuthErrorFeedback = (mode: 'signin' | 'signup', rawMessage: string) => {
+    const message = rawMessage.toLowerCase();
+
+    if (message.includes('email not confirmed')) {
+      return {
+        title: 'Verify your email',
+        description: 'Please confirm your email from your inbox, then sign in.',
+        variant: 'default' as const,
+      };
+    }
+
+    if (message.includes('email rate limit exceeded')) {
+      return {
+        title: 'Too many attempts',
+        description: 'Please wait about a minute, then try again.',
+        variant: 'default' as const,
+      };
+    }
+
+    if (message.includes('already registered')) {
+      return {
+        title: mode === 'signup' ? 'Account already exists' : 'Sign in failed',
+        description: 'This email is already registered. Please sign in instead.',
+        variant: 'default' as const,
+      };
+    }
+
+    if (message.includes('failed to fetch')) {
+      return {
+        title: 'Temporary connection issue',
+        description: 'Session was refreshed. Please click once again.',
+        variant: 'default' as const,
+      };
+    }
+
+    if (message.includes('invalid login credentials')) {
+      return {
+        title: 'Sign in failed',
+        description: 'Email or password is incorrect. Please try again.',
+        variant: 'default' as const,
+      };
+    }
+
+    return {
+      title: mode === 'signup' ? 'Sign up failed' : 'Sign in failed',
+      description: rawMessage,
+      variant: 'default' as const,
+    };
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -56,14 +106,11 @@ export default function Auth() {
     setLoading(false);
 
     if (error) {
+      const feedback = getAuthErrorFeedback('signin', error.message);
       toast({
-        title: 'Sign in failed',
-        description: error.message === 'Invalid login credentials' 
-          ? 'Email or password is incorrect. Please try again.'
-          : error.message.includes('Failed to fetch')
-            ? 'Connection/session issue fixed. Please try once more.'
-            : error.message,
-        variant: 'destructive',
+        title: feedback.title,
+        description: feedback.description,
+        variant: feedback.variant,
       });
     }
   };
@@ -77,21 +124,16 @@ export default function Auth() {
     setLoading(false);
 
     if (error) {
-      let message = error.message;
-      if (error.message.includes('already registered')) {
-        message = 'This email is already registered. Please sign in instead.';
-      } else if (error.message.includes('Failed to fetch')) {
-        message = 'Connection/session issue fixed. Please click Create Account once again.';
-      }
+      const feedback = getAuthErrorFeedback('signup', error.message);
       toast({
-        title: 'Sign up failed',
-        description: message,
-        variant: 'destructive',
+        title: feedback.title,
+        description: feedback.description,
+        variant: feedback.variant,
       });
     } else {
       toast({
         title: 'Welcome to Mediguide! 🎉',
-        description: 'Your account has been created successfully.',
+        description: 'Account created. Please confirm your email before signing in.',
       });
     }
   };
