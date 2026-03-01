@@ -86,14 +86,14 @@ export default function Auth() {
       return {
         title: 'Sign in failed',
         description: 'Email or password is incorrect. Please try again.',
-        variant: 'destructive' as const,
+        variant: 'default' as const,
       };
     }
 
     return {
       title: mode === 'signup' ? 'Sign up failed' : 'Sign in failed',
       description: rawMessage,
-      variant: 'destructive' as const,
+      variant: 'default' as const,
     };
   };
 
