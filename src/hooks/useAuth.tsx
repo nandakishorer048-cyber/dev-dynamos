@@ -21,7 +21,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const hasRecoveredSessionRef = useRef(false);
 
+  const isSessionRefreshTokenValid = (session: Session | null) => {
+    const refreshToken = session?.refresh_token;
+    return typeof refreshToken === 'string' && refreshToken.length >= 20;
+  };
+
+  const stopAutoRefreshSafely = () => {
+    try {
+      supabase.auth.stopAutoRefresh();
+    } catch {
+      // noop
+    }
+  };
+
+  const startAutoRefreshSafely = (session: Session | null) => {
+    if (!isSessionRefreshTokenValid(session)) return;
+
+    try {
+      supabase.auth.startAutoRefresh();
+    } catch {
+      // noop
+    }
+  };
+
   const clearCorruptedSession = async () => {
+    stopAutoRefreshSafely();
+
     try {
       await supabase.auth.signOut({ scope: 'local' });
     } catch {
@@ -71,6 +96,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const ensureHealthyStoredSession = async () => {
+    if (!hasClearlyCorruptedStoredSession()) return;
+
+    hasRecoveredSessionRef.current = true;
+    await clearCorruptedSession();
+  };
+
   useEffect(() => {
     let isMounted = true;
 
@@ -89,6 +121,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(nextSession?.user ?? null);
       setLoading(false);
 
+      runAfterAuthCallback(() => {
+        if (isSessionRefreshTokenValid(nextSession)) {
+          startAutoRefreshSafely(nextSession);
+        } else {
+          stopAutoRefreshSafely();
+        }
+      });
+
       if ((event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && !nextSession && !hasRecoveredSessionRef.current) {
         hasRecoveredSessionRef.current = true;
         runAfterAuthCallback(clearCorruptedSession);
@@ -97,14 +137,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initializeSession = async () => {
       try {
-        if (hasClearlyCorruptedStoredSession()) {
-          hasRecoveredSessionRef.current = true;
-          await clearCorruptedSession();
-        }
+        stopAutoRefreshSafely();
+        await ensureHealthyStoredSession();
 
         const { data: { session }, error } = await supabase.auth.getSession();
 
-        const hasInvalidRefreshToken = Boolean(session && (!session.refresh_token || session.refresh_token.length < 20));
+        const hasInvalidRefreshToken = Boolean(session && !isSessionRefreshTokenValid(session));
 
         if (error || hasInvalidRefreshToken) {
           await clearCorruptedSession();
@@ -118,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!isMounted) return;
         setSession(session);
         setUser(session?.user ?? null);
+        startAutoRefreshSafely(session);
       } catch {
         await clearCorruptedSession();
         if (!isMounted) return;
@@ -132,6 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       isMounted = false;
+      stopAutoRefreshSafely();
       subscription.unsubscribe();
     };
   }, []);
@@ -140,48 +180,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, fullName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
 
-    const executeSignUp = () => supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName
-        }
-      }
-    });
-
     try {
-      const { error } = await executeSignUp();
+      await ensureHealthyStoredSession();
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            full_name: fullName
+          }
+        }
+      });
+
       return { error };
     } catch (err) {
       await clearCorruptedSession();
-      try {
-        const { error } = await executeSignUp();
-        return { error };
-      } catch (retryErr) {
-        return { error: retryErr instanceof Error ? retryErr : new Error('Failed to fetch') };
-      }
+      return { error: err instanceof Error ? err : new Error('Failed to fetch') };
     }
   };
 
   const signIn = async (email: string, password: string) => {
-    const executeSignIn = () => supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-
     try {
-      const { error } = await executeSignIn();
+      await ensureHealthyStoredSession();
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
       return { error };
     } catch (err) {
       await clearCorruptedSession();
-      try {
-        const { error } = await executeSignIn();
-        return { error };
-      } catch (retryErr) {
-        return { error: retryErr instanceof Error ? retryErr : new Error('Failed to fetch') };
-      }
+      return { error: err instanceof Error ? err : new Error('Failed to fetch') };
     }
   };
 
