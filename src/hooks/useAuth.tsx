@@ -6,8 +6,8 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null; session: Session | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null; session: Session | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -177,12 +177,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
 
+  const normalizeAuthError = (err: unknown) => {
+    if (err instanceof Error) return err;
+    if (typeof err === 'string') return new Error(err);
+    return new Error('Authentication failed');
+  };
+
+  const isTransientNetworkError = (err: unknown) => {
+    const message = normalizeAuthError(err).message.toLowerCase();
+    return (
+      message.includes('failed to fetch') ||
+      message.includes('network request failed') ||
+      message.includes('load failed')
+    );
+  };
+
+  const runAuthRequestWithRecovery = async (
+    request: () => Promise<{ data: { session: Session | null }; error: Error | null }>
+  ) => {
+    try {
+      await ensureHealthyStoredSession();
+      const firstAttempt = await request();
+
+      if (!firstAttempt.error) {
+        return { error: null, session: firstAttempt.data.session ?? null };
+      }
+
+      if (!isTransientNetworkError(firstAttempt.error)) {
+        return { error: normalizeAuthError(firstAttempt.error), session: firstAttempt.data.session ?? null };
+      }
+
+      await clearCorruptedSession();
+      await ensureHealthyStoredSession();
+
+      const secondAttempt = await request();
+      return {
+        error: secondAttempt.error ? normalizeAuthError(secondAttempt.error) : null,
+        session: secondAttempt.data.session ?? null,
+      };
+    } catch (err) {
+      await clearCorruptedSession();
+      return { error: normalizeAuthError(err), session: null };
+    }
+  };
+
   const signUp = async (email: string, password: string, fullName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
 
-    try {
-      await ensureHealthyStoredSession();
-      const { error } = await supabase.auth.signUp({
+    return runAuthRequestWithRecovery(async () => {
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -193,26 +236,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       });
 
-      return { error };
-    } catch (err) {
-      await clearCorruptedSession();
-      return { error: err instanceof Error ? err : new Error('Failed to fetch') };
-    }
+      return { data: { session: data.session }, error: error ? normalizeAuthError(error) : null };
+    });
   };
 
   const signIn = async (email: string, password: string) => {
-    try {
-      await ensureHealthyStoredSession();
-      const { error } = await supabase.auth.signInWithPassword({
+    return runAuthRequestWithRecovery(async () => {
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
-      return { error };
-    } catch (err) {
-      await clearCorruptedSession();
-      return { error: err instanceof Error ? err : new Error('Failed to fetch') };
-    }
+      return { data: { session: data.session }, error: error ? normalizeAuthError(error) : null };
+    });
   };
 
   const signOut = async () => {

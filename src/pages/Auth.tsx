@@ -99,10 +99,11 @@ export default function Auth() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     if (!validateForm()) return;
     
     setLoading(true);
-    const { error } = await signIn(email, password);
+    const { error, session } = await signIn(email, password);
     setLoading(false);
 
     if (error) {
@@ -112,15 +113,21 @@ export default function Auth() {
         description: feedback.description,
         variant: feedback.variant,
       });
+      return;
+    }
+
+    if (session) {
+      navigate('/dashboard');
     }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     if (!validateForm()) return;
     
     setLoading(true);
-    const { error } = await signUp(email, password, fullName);
+    const { error, session } = await signUp(email, password, fullName);
     setLoading(false);
 
     if (error) {
@@ -130,12 +137,18 @@ export default function Auth() {
         description: feedback.description,
         variant: feedback.variant,
       });
-    } else {
-      toast({
-        title: 'Welcome to Mediguide! 🎉',
-        description: 'Account created. Please confirm your email before signing in.',
-      });
+      return;
     }
+
+    if (session) {
+      navigate('/dashboard');
+      return;
+    }
+
+    toast({
+      title: 'Welcome to Mediguide! 🎉',
+      description: 'Account created. Please confirm your email before signing in.',
+    });
   };
 
   const features = [
