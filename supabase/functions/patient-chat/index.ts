@@ -47,7 +47,7 @@ serve(async (req) => {
 
     console.log("Processing patient chat request with", messages.length, "messages");
 
-    const systemPrompt = `You are MediGuide AI, a compassionate and knowledgeable health assistant designed to help patients understand their health concerns. 
+    const systemPrompt = `You are Diagnyx AI, a compassionate and knowledgeable health assistant designed to help patients understand their health concerns. 
 
 Your role is to:
 - Listen empathetically to patients' health concerns and symptoms

@@ -19,7 +19,7 @@ export default function Auth() {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  
+
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -32,17 +32,17 @@ export default function Auth() {
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
-    
+
     const emailResult = emailSchema.safeParse(email);
     if (!emailResult.success) {
       newErrors.email = emailResult.error.errors[0].message;
     }
-    
+
     const passwordResult = passwordSchema.safeParse(password);
     if (!passwordResult.success) {
       newErrors.password = passwordResult.error.errors[0].message;
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -101,7 +101,7 @@ export default function Auth() {
     e.preventDefault();
     if (loading) return;
     if (!validateForm()) return;
-    
+
     setLoading(true);
     const { error, session } = await signIn(email, password);
     setLoading(false);
@@ -125,7 +125,7 @@ export default function Auth() {
     e.preventDefault();
     if (loading) return;
     if (!validateForm()) return;
-    
+
     setLoading(true);
     const { error, session } = await signUp(email, password, fullName);
     setLoading(false);
@@ -146,7 +146,7 @@ export default function Auth() {
     }
 
     toast({
-      title: 'Welcome to Mediguide! 🎉',
+      title: 'Welcome to Diagnyx AI! 🎉',
       description: 'Account created. Please confirm your email before signing in.',
     });
   };
@@ -167,10 +167,10 @@ export default function Auth() {
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-foreground/20 backdrop-blur-sm">
               <Pill className="h-6 w-6" />
             </div>
-            <span className="text-2xl font-heading font-bold">Mediguide</span>
+            <span className="text-2xl font-heading font-bold">Diagnyx AI</span>
           </div>
         </div>
-        
+
         <div className="space-y-8">
           <div>
             <h1 className="text-4xl font-heading font-bold text-primary-foreground mb-4">
@@ -180,7 +180,7 @@ export default function Auth() {
               Understand your medical reports, manage medications, and never miss a dose with smart reminders.
             </p>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             {features.map((feature, index) => (
               <div
@@ -197,7 +197,7 @@ export default function Auth() {
         </div>
 
         <p className="text-sm text-primary-foreground/70">
-          © 2025 Mediguide. Your health, simplified.
+          © 2025 Diagnyx AI. Your health, simplified.
         </p>
       </div>
 
@@ -209,7 +209,7 @@ export default function Auth() {
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
               <Pill className="h-5 w-5" />
             </div>
-            <span className="text-xl font-heading font-bold">Mediguide</span>
+            <span className="text-xl font-heading font-bold">Diagnyx AI</span>
           </div>
 
           <Card className="border-0 shadow-elevated">
@@ -269,7 +269,7 @@ export default function Auth() {
                   <form onSubmit={handleSignUp} className="space-y-4">
                     <CardTitle className="text-xl">Create account</CardTitle>
                     <CardDescription>
-                      Start your health journey with Mediguide
+                      Start your health journey with Diagnyx AI
                     </CardDescription>
 
                     <div className="space-y-2">

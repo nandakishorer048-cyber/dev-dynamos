@@ -19,7 +19,7 @@ export function PatientChatbot() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: "Hello! I'm MediGuide AI, your health assistant. I'm here to help you understand your health concerns, answer questions about symptoms, and provide general health information. How can I help you today?",
+      content: "Hello! I'm Diagnyx AI, your health assistant. I'm here to help you understand your health concerns, answer questions about symptoms, and provide general health information. How can I help you today?",
     },
   ]);
   const [input, setInput] = useState('');
@@ -160,7 +160,7 @@ export function PatientChatbot() {
                 <Bot className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold">MediGuide AI</h3>
+                <h3 className="font-semibold">Diagnyx AI</h3>
                 <p className="text-xs text-primary-foreground/80">Your Health Assistant</p>
               </div>
             </div>

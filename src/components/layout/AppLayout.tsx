@@ -1,10 +1,10 @@
 import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Home, 
-  FileText, 
-  Pill, 
-  Bell, 
+import {
+  Home,
+  FileText,
+  Pill,
+  Bell,
   User,
   LogOut,
   Menu,
@@ -50,7 +50,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             </div>
             <div>
               <span className="text-xl font-heading font-bold gradient-text">
-                Mediguide
+                Diagnyx AI
               </span>
               <p className="text-xs text-muted-foreground">Health Assistant</p>
             </div>
@@ -77,8 +77,8 @@ export function AppLayout({ children }: AppLayoutProps) {
                 >
                   <div className={cn(
                     "flex h-9 w-9 items-center justify-center rounded-xl transition-colors",
-                    isActive 
-                      ? "bg-primary-foreground/20" 
+                    isActive
+                      ? "bg-primary-foreground/20"
                       : "bg-sidebar-accent/50"
                   )}>
                     <Icon className="h-5 w-5" />
@@ -111,7 +111,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-health-mint text-primary-foreground">
             <Pill className="h-5 w-5" />
           </div>
-          <span className="text-lg font-heading font-bold gradient-text">Mediguide</span>
+          <span className="text-lg font-heading font-bold gradient-text">Diagnyx AI</span>
         </div>
         <Button
           variant="ghost"

@@ -37,7 +37,7 @@ export default function Index() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-glow">
               <Pill className="h-5 w-5" />
             </div>
-            <span className="text-xl font-heading font-bold text-foreground">Mediguide</span>
+            <span className="text-xl font-heading font-bold text-foreground">Diagnyx AI</span>
           </div>
           <div className="flex items-center gap-4">
             <Button variant="ghost" className="hover:bg-white/50" asChild>
@@ -66,7 +66,7 @@ export default function Index() {
           </h1>
 
           <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto font-medium">
-            Mediguide helps users analyze symptoms, get AI health insights, book lab tests, connect with doctors and order medicines — all in one platform.
+            Diagnyx AI helps users analyze symptoms, get AI health insights, book lab tests, connect with doctors and order medicines — all in one platform.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
@@ -91,7 +91,7 @@ export default function Index() {
               Everything You Need for Better Health Management
             </h2>
             <p className="text-lg text-muted-foreground">
-              Mediguide combines AI technology with user-friendly design to make managing your health simple and stress-free.
+              Diagnyx AI combines AI technology with user-friendly design to make managing your health simple and stress-free.
             </p>
           </div>
 
@@ -119,7 +119,7 @@ export default function Index() {
             Ready to Take Control of Your Health?
           </h2>
           <p className="text-lg text-primary-foreground/90 mb-8 max-w-2xl mx-auto">
-            Join thousands of users who trust Mediguide to help them understand their health better.
+            Join thousands of users who trust Diagnyx AI to help them understand their health better.
           </p>
           <Button size="lg" variant="secondary" className="gap-2" asChild>
             <Link to="/auth">
@@ -137,10 +137,10 @@ export default function Index() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Pill className="h-4 w-4" />
             </div>
-            <span className="font-heading font-bold">Mediguide</span>
+            <span className="font-heading font-bold">Diagnyx AI</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            © 2025 Mediguide. Your health, simplified.
+            © 2025 Diagnyx AI. Your health, simplified.
           </p>
         </div>
       </footer>
