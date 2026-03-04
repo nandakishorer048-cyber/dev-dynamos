@@ -2,11 +2,15 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import { PageTransition } from "./components/PageTransition";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { EmergencyButton } from "@/components/EmergencyButton";
 import { PatientChatbot } from "@/components/chat/PatientChatbot";
 import { useReminderNotifications } from "@/hooks/useReminderNotifications";
+import { CustomCursor } from "@/components/CustomCursor";
+
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -42,7 +46,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   const { user, loading } = useAuth();
-  
+
   // Initialize reminder notifications with sound
   useReminderNotifications();
   if (loading) {
@@ -55,77 +59,81 @@ function AppRoutes() {
     );
   }
 
+  const location = useLocation();
+
   return (
     <>
-      <Routes>
-        <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Index />} />
-        <Route path="/auth" element={user ? <Navigate to="/dashboard" replace /> : <Auth />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/reports"
-          element={
-            <ProtectedRoute>
-              <Reports />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/medications"
-          element={
-            <ProtectedRoute>
-              <Medications />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/reminders"
-          element={
-            <ProtectedRoute>
-              <Reminders />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/vitals"
-          element={
-            <ProtectedRoute>
-              <Vitals />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/rewards"
-          element={
-            <ProtectedRoute>
-              <Rewards />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/healthcare"
-          element={
-            <ProtectedRoute>
-              <HealthcareFlow />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <PageTransition><Index /></PageTransition>} />
+          <Route path="/auth" element={user ? <Navigate to="/dashboard" replace /> : <PageTransition><Auth /></PageTransition>} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <Reports />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/medications"
+            element={
+              <ProtectedRoute>
+                <Medications />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reminders"
+            element={
+              <ProtectedRoute>
+                <Reminders />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vitals"
+            element={
+              <ProtectedRoute>
+                <Vitals />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rewards"
+            element={
+              <ProtectedRoute>
+                <Rewards />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/healthcare"
+            element={
+              <ProtectedRoute>
+                <HealthcareFlow />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
+        </Routes>
+      </AnimatePresence>
       {user && <EmergencyButton />}
       {user && <PatientChatbot />}
     </>
@@ -137,6 +145,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <CustomCursor />
       <BrowserRouter>
         <AuthProvider>
           <AppRoutes />

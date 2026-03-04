@@ -39,12 +39,12 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { signOut } = useAuth();
 
   return (
-    <div className="min-h-screen">
-      {/* Desktop Sidebar with gradient */}
-      <aside className="fixed inset-y-0 left-0 z-50 hidden w-72 border-r border-sidebar-border md:block gradient-sidebar">
+    <div className="min-h-screen bg-background relative overflow-hidden text-foreground" style={{ background: 'linear-gradient(to bottom, #111827, #0f172a)' }}>
+      {/* Desktop Sidebar with glassmorphism */}
+      <aside className="fixed inset-y-0 left-0 z-50 hidden w-72 border-r border-white/5 bg-black/20 backdrop-blur-xl md:block shadow-[10px_0_30px_rgba(0,0,0,0.5)]">
         <div className="flex h-full flex-col">
           {/* Logo */}
-          <div className="flex h-20 items-center gap-3 border-b border-sidebar-border px-6">
+          <div className="flex h-20 items-center gap-3 border-b border-white/5 px-6">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-health-mint text-primary-foreground shadow-warm">
               <Pill className="h-6 w-6" />
             </div>
@@ -58,7 +58,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
           {/* Navigation */}
           <nav className="flex-1 space-y-2 p-4 pt-6">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 mb-4">
+            <p className="text-xs font-semibold text-foreground/50 uppercase tracking-wider px-4 mb-4">
               Menu
             </p>
             {navItems.map((item) => {
@@ -69,17 +69,17 @@ export function AppLayout({ children }: AppLayoutProps) {
                   key={item.path}
                   to={item.path}
                   className={cn(
-                    "nav-pill flex items-center gap-3 text-sm font-medium",
+                    "nav-pill flex items-center gap-3 text-sm font-medium transition-all duration-300 rounded-2xl",
                     isActive
-                      ? "nav-pill-active"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+                      ? "bg-primary/20 text-primary shadow-[0_0_15px_rgba(37,99,235,0.2)] border border-primary/30"
+                      : "text-foreground hover:bg-white/5 hover:text-white"
                   )}
                 >
                   <div className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-xl transition-colors",
+                    "flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-300",
                     isActive
-                      ? "bg-primary-foreground/20"
-                      : "bg-sidebar-accent/50"
+                      ? "bg-primary text-primary-foreground shadow-[0_0_10px_rgba(37,99,235,0.5)]"
+                      : "bg-white/5 text-foreground/70"
                   )}>
                     <Icon className="h-5 w-5" />
                   </div>
@@ -90,13 +90,13 @@ export function AppLayout({ children }: AppLayoutProps) {
           </nav>
 
           {/* Sign Out */}
-          <div className="border-t border-sidebar-border p-4">
+          <div className="border-t border-white/5 p-4">
             <Button
               variant="ghost"
-              className="w-full justify-start gap-3 nav-pill text-sidebar-foreground hover:bg-sidebar-accent/60"
+              className="w-full justify-start gap-3 rounded-2xl text-foreground hover:bg-white/5 hover:text-white transition-all duration-300"
               onClick={signOut}
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sidebar-accent/50">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5">
                 <LogOut className="h-5 w-5" />
               </div>
               Sign Out
@@ -106,7 +106,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       </aside>
 
       {/* Mobile Header with glass effect */}
-      <header className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between border-b border-border px-4 md:hidden glass-card">
+      <header className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between border-b border-white/5 px-4 md:hidden bg-black/40 backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-health-mint text-primary-foreground">
             <Pill className="h-5 w-5" />
@@ -125,7 +125,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {/* Mobile Menu with glass effect */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-40 pt-16 md:hidden glass-card">
+        <div className="fixed inset-0 z-40 pt-16 md:hidden bg-black/40 backdrop-blur-xl">
           <nav className="space-y-2 p-4">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -136,15 +136,15 @@ export function AppLayout({ children }: AppLayoutProps) {
                   to={item.path}
                   onClick={() => setMobileMenuOpen(false)}
                   className={cn(
-                    "nav-pill flex items-center gap-3 text-base font-medium",
+                    "nav-pill flex items-center gap-3 text-base font-medium rounded-2xl transition-all duration-300",
                     isActive
-                      ? "nav-pill-active"
-                      : "text-foreground hover:bg-accent/50"
+                      ? "bg-primary/20 text-primary border border-primary/30 shadow-[0_0_15px_rgba(37,99,235,0.2)]"
+                      : "text-foreground hover:bg-white/5"
                   )}
                 >
                   <div className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-xl",
-                    isActive ? "bg-primary-foreground/20" : "bg-accent"
+                    "flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300",
+                    isActive ? "bg-primary text-primary-foreground shadow-[0_0_10px_rgba(37,99,235,0.5)]" : "bg-white/5 text-foreground/70"
                   )}>
                     <Icon className="h-5 w-5" />
                   </div>
@@ -154,13 +154,13 @@ export function AppLayout({ children }: AppLayoutProps) {
             })}
             <Button
               variant="ghost"
-              className="w-full justify-start gap-3 nav-pill px-4 py-3 text-base"
+              className="w-full justify-start gap-3 rounded-2xl px-4 py-3 text-base text-foreground hover:bg-white/10"
               onClick={() => {
                 signOut();
                 setMobileMenuOpen(false);
               }}
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5">
                 <LogOut className="h-5 w-5" />
               </div>
               Sign Out
