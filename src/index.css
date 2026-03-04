@@ -16,21 +16,21 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 25% 18%;
 
-    /* Vibrant teal primary */
-    --primary: 168 76% 42%;
+    /* Vibrant Blue primary */
+    --primary: 221 83% 53%;
     --primary-foreground: 0 0% 100%;
 
-    /* Soft mint secondary */
-    --secondary: 170 35% 94%;
-    --secondary-foreground: 170 40% 30%;
+    /* Purple secondary */
+    --secondary: 262 83% 58%;
+    --secondary-foreground: 0 0% 100%;
 
     /* Cool gray muted */
     --muted: 210 20% 94%;
     --muted-foreground: 220 15% 45%;
 
-    /* Soft teal accent */
-    --accent: 175 45% 92%;
-    --accent-foreground: 175 50% 25%;
+    /* Pink accent */
+    --accent: 350 89% 60%;
+    --accent-foreground: 0 0% 100%;
 
     /* Health success green */
     --success: 152 70% 42%;
@@ -58,19 +58,19 @@
     --health-mint-foreground: 0 0% 100%;
 
     /* Premium Gradients */
-    --gradient-main: linear-gradient(135deg, 
-      hsl(170 40% 97%) 0%, 
-      hsl(180 35% 95%) 25%,
-      hsl(195 40% 96%) 50%,
-      hsl(200 35% 97%) 75%,
-      hsl(185 30% 96%) 100%);
+    --gradient-main: linear-gradient(135deg,
+        hsl(170 40% 97%) 0%,
+        hsl(180 35% 95%) 25%,
+        hsl(195 40% 96%) 50%,
+        hsl(200 35% 97%) 75%,
+        hsl(185 30% 96%) 100%);
     --gradient-warm: linear-gradient(135deg, hsl(168 76% 42%) 0%, hsl(200 80% 50%) 100%);
     --gradient-calm: linear-gradient(135deg, hsl(270 65% 60%) 0%, hsl(200 80% 50%) 100%);
     --gradient-soft: linear-gradient(180deg, hsl(180 20% 98%) 0%, hsl(210 20% 94%) 100%);
     --gradient-teal-mint: linear-gradient(135deg, hsl(168 76% 42%) 0%, hsl(165 60% 50%) 100%);
     --gradient-mint-blue: linear-gradient(135deg, hsl(165 60% 50%) 0%, hsl(200 80% 50%) 100%);
     --gradient-purple-blue: linear-gradient(135deg, hsl(270 65% 60%) 0%, hsl(200 80% 50%) 100%);
-    --gradient-card: linear-gradient(145deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+    --gradient-card: linear-gradient(145deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
     --gradient-sidebar: linear-gradient(180deg, hsl(170 35% 97%) 0%, hsl(180 30% 95%) 50%, hsl(175 35% 96%) 100%);
 
     /* Premium Shadows */
@@ -137,10 +137,10 @@
     --health-mint: 165 50% 45%;
     --health-mint-foreground: 0 0% 100%;
 
-    --gradient-main: linear-gradient(135deg, 
-      hsl(220 20% 8%) 0%, 
-      hsl(220 18% 10%) 50%,
-      hsl(220 20% 9%) 100%);
+    --gradient-main: linear-gradient(135deg,
+        hsl(220 20% 8%) 0%,
+        hsl(220 18% 10%) 50%,
+        hsl(220 20% 9%) 100%);
     --gradient-card: linear-gradient(145deg, hsl(220 18% 14%) 0%, hsl(220 18% 11%) 100%);
     --gradient-sidebar: linear-gradient(180deg, hsl(220 18% 10%) 0%, hsl(220 18% 8%) 100%);
 
@@ -169,12 +169,18 @@
     min-height: 100vh;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-heading font-bold tracking-tight;
   }
 }
 
 @layer components {
+
   /* Gradient utilities */
   .gradient-main {
     background: var(--gradient-main);
@@ -349,9 +355,12 @@
   }
 
   @keyframes sosPulse {
-    0%, 100% {
+
+    0%,
+    100% {
       box-shadow: 0 0 0 0 hsl(var(--destructive) / 0.4);
     }
+
     50% {
       box-shadow: 0 0 0 12px hsl(var(--destructive) / 0);
     }
@@ -359,7 +368,7 @@
 
   /* Progress bar gradient */
   .progress-gradient [data-state="complete"],
-  .progress-gradient [role="progressbar"] > div {
+  .progress-gradient [role="progressbar"]>div {
     background: var(--gradient-warm) !important;
   }
 }
@@ -389,6 +398,7 @@
     from {
       opacity: 0;
     }
+
     to {
       opacity: 1;
     }
@@ -399,6 +409,7 @@
       opacity: 0;
       transform: translateY(16px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -406,18 +417,24 @@
   }
 
   @keyframes pulseSoft {
-    0%, 100% {
+
+    0%,
+    100% {
       opacity: 1;
     }
+
     50% {
       opacity: 0.7;
     }
   }
 
   @keyframes float {
-    0%, 100% {
+
+    0%,
+    100% {
       transform: translateY(0);
     }
+
     50% {
       transform: translateY(-6px);
     }
@@ -427,6 +444,7 @@
     from {
       box-shadow: 0 0 10px hsl(var(--primary) / 0.3);
     }
+
     to {
       box-shadow: 0 0 20px hsl(var(--primary) / 0.5);
     }
