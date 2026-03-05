@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 
 interface Particle {
     x: number;
@@ -7,152 +7,277 @@ interface Particle {
     baseY: number;
     size: number;
     color: string;
+    alpha: number;
     vx: number;
     vy: number;
     angle: number;
     distance: number;
     speed: number;
+    pulse: number;
+    pulseSpeed: number;
 }
+
+interface FloatingShape {
+    x: number;
+    y: number;
+    size: number;
+    rotation: number;
+    rotationSpeed: number;
+    speedX: number;
+    speedY: number;
+    opacity: number;
+    color: string;
+    type: 'circle' | 'hexagon' | 'triangle';
+}
+
+// HSL string colors with neon glow palette
+const COLORS = [
+    'rgba(59, 130, 246, 0.8)',   // Blue
+    'rgba(139, 92, 246, 0.8)',   // Purple
+    'rgba(14, 165, 233, 0.75)',  // Cyan
+    'rgba(168, 85, 247, 0.7)',   // Violet
+    'rgba(6, 182, 212, 0.7)',    // Teal
+    'rgba(99, 102, 241, 0.6)',   // Indigo
+];
+
+const GLOW_COLORS = [
+    'rgba(59, 130, 246, ',       // Blue
+    'rgba(139, 92, 246, ',       // Purple
+    'rgba(14, 165, 233, ',       // Cyan
+    'rgba(168, 85, 247, ',       // Violet
+    'rgba(6, 182, 212, ',        // Teal
+];
 
 export const ParticleGalaxy: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const mouseRef = useRef({ x: -1000, y: -1000 });
+    const animFrameRef = useRef<number>(0);
 
-    useEffect(() => {
+    const drawHexagon = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number) => {
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i - Math.PI / 6;
+            const px = x + size * Math.cos(angle);
+            const py = y + size * Math.sin(angle);
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+    };
+
+    const drawTriangle = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number) => {
+        ctx.beginPath();
+        for (let i = 0; i < 3; i++) {
+            const angle = (Math.PI * 2 / 3) * i - Math.PI / 2;
+            const px = x + size * Math.cos(angle);
+            const py = y + size * Math.sin(angle);
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+    };
+
+    const init = useCallback(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
 
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { alpha: true });
         if (!ctx) return;
 
-        let animationFrameId: number;
         let particles: Particle[] = [];
-
-        // Mouse state
-        const mouse = {
-            x: -1000,
-            y: -1000,
-            radius: 150
-        };
-
-        // Colors: Blue, Purple, Pink, Orange
-        const colors = ['#2563EB', '#7C3AED', '#F43F5E', '#F97316'];
+        let floatingShapes: FloatingShape[] = [];
+        let time = 0;
 
         const resize = () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             initParticles();
+            initFloatingShapes();
         };
 
         const initParticles = () => {
             particles = [];
-            // Adjust particle count based on screen width for performance
             const isMobile = window.innerWidth < 768;
-            const particleCount = isMobile ? 150 : 400;
-
+            const particleCount = isMobile ? 100 : 300;
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
 
             for (let i = 0; i < particleCount; i++) {
-                // Create an orbital distribution
-                // Use a wide elliptical orbit or ring
                 const angle = Math.random() * Math.PI * 2;
-                // Focus particles in a donut shape around the center text
-                const minRadius = isMobile ? 100 : 250;
-                const maxRadius = isMobile ? 300 : 600;
-
-                // Use power curve to cluster towards the inner edge of the ring
-                const distance = minRadius + Math.pow(Math.random(), 1.5) * (maxRadius - minRadius);
+                const minRadius = isMobile ? 80 : 180;
+                const maxRadius = isMobile ? Math.min(canvas.width, canvas.height) * 0.45 : Math.min(canvas.width, canvas.height) * 0.5;
+                const distance = minRadius + Math.pow(Math.random(), 1.3) * (maxRadius - minRadius);
 
                 const x = centerX + Math.cos(angle) * distance;
                 const y = centerY + Math.sin(angle) * distance;
+                const colorIndex = Math.floor(Math.random() * COLORS.length);
 
                 particles.push({
                     x,
                     y,
                     baseX: x,
                     baseY: y,
-                    size: Math.random() * 2 + 0.5,
-                    color: colors[Math.floor(Math.random() * colors.length)],
+                    size: Math.random() * 2.5 + 0.5,
+                    color: COLORS[colorIndex],
+                    alpha: Math.random() * 0.5 + 0.3,
                     vx: 0,
                     vy: 0,
                     angle,
                     distance,
-                    speed: (Math.random() * 0.002) + 0.001 * (Math.random() < 0.5 ? 1 : -1) // Slow orbital speed
+                    speed: (Math.random() * 0.0015 + 0.0005) * (Math.random() < 0.5 ? 1 : -1),
+                    pulse: Math.random() * Math.PI * 2,
+                    pulseSpeed: Math.random() * 0.02 + 0.01,
+                });
+            }
+        };
+
+        const initFloatingShapes = () => {
+            floatingShapes = [];
+            const shapeCount = window.innerWidth < 768 ? 4 : 8;
+            const types: FloatingShape['type'][] = ['circle', 'hexagon', 'triangle'];
+
+            for (let i = 0; i < shapeCount; i++) {
+                floatingShapes.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 40 + 20,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.005,
+                    speedX: (Math.random() - 0.5) * 0.3,
+                    speedY: (Math.random() - 0.5) * 0.3,
+                    opacity: Math.random() * 0.06 + 0.02,
+                    color: GLOW_COLORS[Math.floor(Math.random() * GLOW_COLORS.length)],
+                    type: types[Math.floor(Math.random() * types.length)],
                 });
             }
         };
 
         const draw = () => {
-            // Clear with slight trailing effect for motion blur
+            time++;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
+            const mouse = mouseRef.current;
 
+            // Draw floating shapes (behind particles)
+            floatingShapes.forEach(shape => {
+                shape.x += shape.speedX;
+                shape.y += shape.speedY;
+                shape.rotation += shape.rotationSpeed;
+
+                // Wrap around screen
+                if (shape.x < -shape.size) shape.x = canvas.width + shape.size;
+                if (shape.x > canvas.width + shape.size) shape.x = -shape.size;
+                if (shape.y < -shape.size) shape.y = canvas.height + shape.size;
+                if (shape.y > canvas.height + shape.size) shape.y = -shape.size;
+
+                ctx.save();
+                ctx.translate(shape.x, shape.y);
+                ctx.rotate(shape.rotation);
+                ctx.strokeStyle = shape.color + shape.opacity + ')';
+                ctx.lineWidth = 1;
+
+                if (shape.type === 'circle') {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, shape.size, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (shape.type === 'hexagon') {
+                    drawHexagon(ctx, 0, 0, shape.size);
+                    ctx.stroke();
+                } else {
+                    drawTriangle(ctx, 0, 0, shape.size);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            });
+
+            // Draw connection lines between nearby particles
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 100) {
+                        const alpha = (1 - dist / 100) * 0.08;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = `rgba(100, 150, 255, ${alpha})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // Draw particles
             particles.forEach(p => {
-                // 1. Orbital motion update
+                // Orbital motion
                 p.angle += p.speed;
                 p.baseX = centerX + Math.cos(p.angle) * p.distance;
                 p.baseY = centerY + Math.sin(p.angle) * p.distance;
 
-                // 2. Mouse interaction
+                // Pulsing alpha
+                p.pulse += p.pulseSpeed;
+                const pulseAlpha = p.alpha + Math.sin(p.pulse) * 0.2;
+
+                // Mouse interaction
                 const dx = mouse.x - p.x;
                 const dy = mouse.y - p.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
+                const mouseRadius = 180;
 
-                // Calculate forces
-                if (dist < mouse.radius) {
-                    // Repel from mouse
-                    const forceDirectionX = dx / dist;
-                    const forceDirectionY = dy / dist;
-                    // Farther from center of mouse = weaker force, max force at center
-                    const force = (mouse.radius - dist) / mouse.radius;
-                    // Apply negative force to repel
-                    p.vx -= forceDirectionX * force * 1.5;
-                    p.vy -= forceDirectionY * force * 1.5;
+                if (dist < mouseRadius) {
+                    const force = (mouseRadius - dist) / mouseRadius;
+                    p.vx -= (dx / dist) * force * 2;
+                    p.vy -= (dy / dist) * force * 2;
                 }
 
-                // 3. Return to base position (spring force)
-                const springX = (p.baseX - p.x) * 0.05;
-                const springY = (p.baseY - p.y) * 0.05;
+                // Spring back
+                p.vx += (p.baseX - p.x) * 0.04;
+                p.vy += (p.baseY - p.y) * 0.04;
 
-                p.vx += springX;
-                p.vy += springY;
+                // Friction
+                p.vx *= 0.88;
+                p.vy *= 0.88;
 
-                // 4. Apply friction
-                p.vx *= 0.85;
-                p.vy *= 0.85;
-
-                // 5. Update position
+                // Update
                 p.x += p.vx;
                 p.y += p.vy;
 
-                // Draw particle
+                // Draw with glow
+                const glowSize = p.size * (1 + Math.sin(p.pulse) * 0.3);
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fillStyle = p.color;
+                ctx.arc(p.x, p.y, glowSize, 0, Math.PI * 2);
+                ctx.fillStyle = p.color.replace(/[\d.]+\)$/, `${Math.max(0, pulseAlpha)})`);
 
-                // Add soft glow
-                ctx.shadowBlur = 10;
+                // Soft glow effect
+                ctx.shadowBlur = 12;
                 ctx.shadowColor = p.color;
-
                 ctx.fill();
-
-                // Reset shadow for next draw loop performance
                 ctx.shadowBlur = 0;
             });
 
-            animationFrameId = requestAnimationFrame(draw);
+            // Draw mouse attraction glow
+            if (mouse.x > 0 && mouse.y > 0) {
+                const gradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 120);
+                gradient.addColorStop(0, 'rgba(59, 130, 246, 0.04)');
+                gradient.addColorStop(0.5, 'rgba(139, 92, 246, 0.02)');
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(mouse.x - 120, mouse.y - 120, 240, 240);
+            }
+
+            animFrameRef.current = requestAnimationFrame(draw);
         };
 
         const handleMouseMove = (e: MouseEvent) => {
-            mouse.x = e.clientX;
-            mouse.y = e.clientY;
+            mouseRef.current = { x: e.clientX, y: e.clientY };
         };
 
         const handleMouseLeave = () => {
-            mouse.x = -1000;
-            mouse.y = -1000;
+            mouseRef.current = { x: -1000, y: -1000 };
         };
 
         window.addEventListener('resize', resize);
@@ -166,15 +291,20 @@ export const ParticleGalaxy: React.FC = () => {
             window.removeEventListener('resize', resize);
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseleave', handleMouseLeave);
-            cancelAnimationFrame(animationFrameId);
+            cancelAnimationFrame(animFrameRef.current);
         };
     }, []);
+
+    useEffect(() => {
+        const cleanup = init();
+        return cleanup;
+    }, [init]);
 
     return (
         <canvas
             ref={canvasRef}
             className="absolute inset-0 pointer-events-none z-0"
-            style={{ opacity: 0.8 }}
+            style={{ opacity: 0.85 }}
         />
     );
 };

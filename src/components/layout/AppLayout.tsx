@@ -17,6 +17,8 @@ import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FloatingBackground } from '@/components/FloatingBackground';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -39,15 +41,38 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { signOut } = useAuth();
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden text-foreground" style={{ background: 'linear-gradient(to bottom, #111827, #0f172a)' }}>
+    <div
+      className="min-h-screen bg-background relative overflow-hidden text-foreground"
+      style={{ background: 'linear-gradient(135deg, hsl(225 30% 5%) 0%, hsl(230 25% 7%) 30%, hsl(240 20% 8%) 60%, hsl(225 25% 6%) 100%)' }}
+    >
+      {/* Floating Background Particles */}
+      <FloatingBackground />
+
       {/* Desktop Sidebar with glassmorphism */}
-      <aside className="fixed inset-y-0 left-0 z-50 hidden w-72 border-r border-white/5 bg-black/20 backdrop-blur-xl md:block shadow-[10px_0_30px_rgba(0,0,0,0.5)]">
-        <div className="flex h-full flex-col">
+      <aside className="fixed inset-y-0 left-0 z-50 hidden w-72 md:block">
+        <div
+          className="h-full flex flex-col border-r"
+          style={{
+            background: 'rgba(10, 15, 28, 0.85)',
+            backdropFilter: 'blur(24px) saturate(1.4)',
+            WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
+            borderColor: 'rgba(100, 140, 220, 0.08)',
+            boxShadow: '10px 0 40px rgba(0, 0, 0, 0.5), 0 0 60px rgba(59, 130, 246, 0.03)',
+          }}
+        >
           {/* Logo */}
-          <div className="flex h-20 items-center gap-3 border-b border-white/5 px-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-health-mint text-primary-foreground shadow-warm">
+          <div className="flex h-20 items-center gap-3 px-6" style={{ borderBottom: '1px solid rgba(100, 140, 220, 0.08)' }}>
+            <motion.div
+              className="flex h-12 w-12 items-center justify-center rounded-2xl text-white"
+              style={{
+                background: 'linear-gradient(135deg, hsl(210 100% 56%) 0%, hsl(185 85% 50%) 100%)',
+                boxShadow: '0 0 20px rgba(59, 130, 246, 0.4), 0 4px 12px rgba(0,0,0,0.3)',
+              }}
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+            >
               <Pill className="h-6 w-6" />
-            </div>
+            </motion.div>
             <div>
               <span className="text-xl font-heading font-bold gradient-text">
                 Diagnyx AI
@@ -57,47 +82,70 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-2 p-4 pt-6">
-            <p className="text-xs font-semibold text-foreground/50 uppercase tracking-wider px-4 mb-4">
+          <nav className="flex-1 space-y-1.5 p-4 pt-6 overflow-y-auto">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em] px-4 mb-4">
               Menu
             </p>
-            {navItems.map((item) => {
+            {navItems.map((item, index) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
               return (
-                <Link
+                <motion.div
                   key={item.path}
-                  to={item.path}
-                  className={cn(
-                    "nav-pill flex items-center gap-3 text-sm font-medium transition-all duration-300 rounded-2xl",
-                    isActive
-                      ? "bg-primary/20 text-primary shadow-[0_0_15px_rgba(37,99,235,0.2)] border border-primary/30"
-                      : "text-foreground hover:bg-white/5 hover:text-white"
-                  )}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  <div className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-300",
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-[0_0_10px_rgba(37,99,235,0.5)]"
-                      : "bg-white/5 text-foreground/70"
-                  )}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  {item.label}
-                </Link>
+                  <Link
+                    to={item.path}
+                    className={cn(
+                      "nav-pill flex items-center gap-3 text-sm font-medium transition-all duration-300 rounded-2xl relative group",
+                      isActive
+                        ? "text-white"
+                        : "text-foreground/70 hover:text-white hover:bg-white/[0.04]"
+                    )}
+                    style={isActive ? {
+                      background: 'rgba(59, 130, 246, 0.12)',
+                      border: '1px solid rgba(59, 130, 246, 0.2)',
+                      boxShadow: '0 0 20px rgba(59, 130, 246, 0.1), inset 0 0 20px rgba(59, 130, 246, 0.05)',
+                    } : undefined}
+                  >
+                    <div className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-300",
+                      isActive
+                        ? "bg-primary text-white"
+                        : "bg-white/[0.04] text-foreground/60 group-hover:text-white group-hover:bg-white/[0.08]"
+                    )}
+                      style={isActive ? {
+                        boxShadow: '0 0 15px rgba(59, 130, 246, 0.5), 0 0 30px rgba(59, 130, 246, 0.2)',
+                      } : undefined}
+                    >
+                      <Icon className="h-[18px] w-[18px]" />
+                    </div>
+                    {item.label}
+                    {isActive && (
+                      <motion.div
+                        className="absolute right-3 w-1.5 h-1.5 rounded-full bg-primary"
+                        layoutId="activeIndicator"
+                        style={{ boxShadow: '0 0 8px rgba(59, 130, 246, 0.8)' }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                      />
+                    )}
+                  </Link>
+                </motion.div>
               );
             })}
           </nav>
 
           {/* Sign Out */}
-          <div className="border-t border-white/5 p-4">
+          <div className="p-4" style={{ borderTop: '1px solid rgba(100, 140, 220, 0.08)' }}>
             <Button
               variant="ghost"
-              className="w-full justify-start gap-3 rounded-2xl text-foreground hover:bg-white/5 hover:text-white transition-all duration-300"
+              className="w-full justify-start gap-3 rounded-2xl text-foreground/60 hover:text-white hover:bg-white/[0.04] transition-all duration-300"
               onClick={signOut}
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5">
-                <LogOut className="h-5 w-5" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.04]">
+                <LogOut className="h-[18px] w-[18px]" />
               </div>
               Sign Out
             </Button>
@@ -106,9 +154,23 @@ export function AppLayout({ children }: AppLayoutProps) {
       </aside>
 
       {/* Mobile Header with glass effect */}
-      <header className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between border-b border-white/5 px-4 md:hidden bg-black/40 backdrop-blur-xl">
+      <header
+        className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between px-4 md:hidden"
+        style={{
+          background: 'rgba(10, 15, 28, 0.85)',
+          backdropFilter: 'blur(20px) saturate(1.3)',
+          WebkitBackdropFilter: 'blur(20px) saturate(1.3)',
+          borderBottom: '1px solid rgba(100, 140, 220, 0.08)',
+        }}
+      >
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-health-mint text-primary-foreground">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-white"
+            style={{
+              background: 'linear-gradient(135deg, hsl(210 100% 56%) 0%, hsl(185 85% 50%) 100%)',
+              boxShadow: '0 0 15px rgba(59, 130, 246, 0.4)',
+            }}
+          >
             <Pill className="h-5 w-5" />
           </div>
           <span className="text-lg font-heading font-bold gradient-text">Diagnyx AI</span>
@@ -117,64 +179,103 @@ export function AppLayout({ children }: AppLayoutProps) {
           variant="ghost"
           size="icon"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="rounded-xl"
+          className="rounded-xl text-foreground hover:bg-white/[0.06]"
         >
           {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
       </header>
 
-      {/* Mobile Menu with glass effect */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-40 pt-16 md:hidden bg-black/40 backdrop-blur-xl">
-          <nav className="space-y-2 p-4">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={cn(
-                    "nav-pill flex items-center gap-3 text-base font-medium rounded-2xl transition-all duration-300",
-                    isActive
-                      ? "bg-primary/20 text-primary border border-primary/30 shadow-[0_0_15px_rgba(37,99,235,0.2)]"
-                      : "text-foreground hover:bg-white/5"
-                  )}
+      {/* Mobile Menu with glass effect & animation */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-40 pt-16 md:hidden"
+            style={{
+              background: 'rgba(10, 15, 28, 0.95)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+            }}
+          >
+            <nav className="space-y-2 p-4">
+              {navItems.map((item, index) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.path;
+                return (
+                  <motion.div
+                    key={item.path}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05, duration: 0.3 }}
+                  >
+                    <Link
+                      to={item.path}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={cn(
+                        "nav-pill flex items-center gap-3 text-base font-medium rounded-2xl transition-all duration-300",
+                        isActive
+                          ? "text-white"
+                          : "text-foreground/70 hover:text-white hover:bg-white/[0.04]"
+                      )}
+                      style={isActive ? {
+                        background: 'rgba(59, 130, 246, 0.12)',
+                        border: '1px solid rgba(59, 130, 246, 0.2)',
+                        boxShadow: '0 0 20px rgba(59, 130, 246, 0.1)',
+                      } : undefined}
+                    >
+                      <div className={cn(
+                        "flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300",
+                        isActive
+                          ? "bg-primary text-white"
+                          : "bg-white/[0.04] text-foreground/60"
+                      )}
+                        style={isActive ? { boxShadow: '0 0 15px rgba(59, 130, 246, 0.5)' } : undefined}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      {item.label}
+                    </Link>
+                  </motion.div>
+                );
+              })}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: navItems.length * 0.05, duration: 0.3 }}
+              >
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-3 rounded-2xl px-4 py-3 text-base text-foreground/60 hover:text-white hover:bg-white/[0.04]"
+                  onClick={() => {
+                    signOut();
+                    setMobileMenuOpen(false);
+                  }}
                 >
-                  <div className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300",
-                    isActive ? "bg-primary text-primary-foreground shadow-[0_0_10px_rgba(37,99,235,0.5)]" : "bg-white/5 text-foreground/70"
-                  )}>
-                    <Icon className="h-5 w-5" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.04]">
+                    <LogOut className="h-5 w-5" />
                   </div>
-                  {item.label}
-                </Link>
-              );
-            })}
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 rounded-2xl px-4 py-3 text-base text-foreground hover:bg-white/10"
-              onClick={() => {
-                signOut();
-                setMobileMenuOpen(false);
-              }}
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5">
-                <LogOut className="h-5 w-5" />
-              </div>
-              Sign Out
-            </Button>
-          </nav>
-        </div>
-      )}
+                  Sign Out
+                </Button>
+              </motion.div>
+            </nav>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content */}
-      <main className="md:pl-72">
+      <main className="md:pl-72 relative z-10">
         <div className="min-h-screen pt-16 md:pt-0">
-          <div className="container py-6 md:py-8">
+          <motion.div
+            className="container py-6 md:py-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          >
             {children}
-          </div>
+          </motion.div>
         </div>
       </main>
     </div>
