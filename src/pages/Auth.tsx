@@ -167,28 +167,6 @@ export default function Auth() {
     });
   };
 
-  const handleGoogleSignIn = async () => {
-    if (googleLoading) return;
-    setGoogleLoading(true);
-    try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
-      });
-      if (result?.error) {
-        toast({
-          title: 'Google sign in failed',
-          description: result.error.message || 'Could not sign in with Google.',
-        });
-      }
-    } catch {
-      toast({
-        title: 'Google sign in failed',
-        description: 'An unexpected error occurred.',
-      });
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
 
   const features = [
     { icon: Sparkles, text: 'AI-powered report analysis', color: 'text-blue-400', glow: 'rgba(59,130,246,0.2)' },
