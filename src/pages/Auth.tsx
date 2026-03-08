@@ -252,6 +252,92 @@ export default function Auth() {
     { icon: Shield, text: 'Secure & private data', color: 'text-indigo-400', glow: 'rgba(99,102,241,0.2)' },
   ];
 
+  const inputClassName = "bg-white/[0.03] border-white/10 text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:ring-primary/20 transition-all";
+
+  const SocialAndPhoneAuth = () => (
+    <div className="space-y-4 mt-5">
+      <div className="relative">
+        <Separator className="bg-white/10" />
+        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[hsl(230,25%,7%)] px-3 text-xs text-foreground/40">
+          or continue with
+        </span>
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full h-12 bg-white/[0.03] border-white/10 text-foreground hover:bg-white/[0.06] hover:border-white/20 rounded-xl group"
+        onClick={handleGoogleSignIn}
+        disabled={googleLoading}
+      >
+        <Chrome className="h-5 w-5 mr-2 text-foreground/70" />
+        {googleLoading ? 'Connecting...' : 'Sign in with Google'}
+      </Button>
+
+      <div className="space-y-3">
+        {!otpSent ? (
+          <div className="space-y-2">
+            <Label className="text-foreground/70 flex items-center gap-2">
+              <Phone className="h-3.5 w-3.5" /> Phone Number
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                type="tel"
+                placeholder="+1234567890"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className={`flex-1 ${inputClassName} ${errors.phone ? 'border-destructive' : ''}`}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="bg-white/[0.03] border-white/10 text-foreground hover:bg-white/[0.06] hover:border-white/20 rounded-xl whitespace-nowrap"
+                onClick={handleSendOtp}
+                disabled={phoneLoading}
+              >
+                {phoneLoading ? 'Sending...' : 'Send OTP'}
+              </Button>
+            </div>
+            {errors.phone && (
+              <p className="text-sm text-destructive">{errors.phone}</p>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <Label className="text-foreground/70">Enter OTP sent to {phone}</Label>
+            <div className="flex justify-center">
+              <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+                <InputOTPGroup>
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <InputOTPSlot key={i} index={i} className="bg-white/[0.03] border-white/10 text-foreground" />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                className="flex-1 text-foreground/50 hover:text-foreground"
+                onClick={() => { setOtpSent(false); setOtp(''); }}
+              >
+                Change number
+              </Button>
+              <Button
+                type="button"
+                className="flex-1 btn-glow btn-sweep text-white border-0 rounded-xl"
+                onClick={handleVerifyOtp}
+                disabled={phoneLoading || otp.length !== 6}
+              >
+                {phoneLoading ? 'Verifying...' : 'Verify OTP'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div
       className="min-h-screen flex relative overflow-hidden"
@@ -261,7 +347,6 @@ export default function Auth() {
       <div className="hidden lg:flex lg:w-1/2 p-12 flex-col justify-between relative overflow-hidden">
         <ParticleGalaxy />
 
-        {/* Gradient overlay */}
         <div className="absolute inset-0 z-[1]" style={{
           background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.06) 50%, rgba(14, 165, 233, 0.04) 100%)',
         }} />
@@ -349,7 +434,7 @@ export default function Auth() {
         <motion.div
           initial={{ opacity: 0, y: 30, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] as const }}
           className="w-full max-w-md space-y-8"
         >
           {/* Mobile Logo */}
@@ -380,7 +465,6 @@ export default function Auth() {
               boxShadow: '0 20px 60px rgba(0,0,0,0.3), 0 0 40px rgba(59, 130, 246, 0.04)',
             }}
           >
-            {/* Top glow line */}
             <div
               className="h-px w-full"
               style={{
@@ -417,7 +501,7 @@ export default function Auth() {
                         placeholder="you@example.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className={`bg-white/[0.03] border-white/10 text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:ring-primary/20 transition-all ${errors.email ? 'border-destructive' : ''}`}
+                        className={`${inputClassName} ${errors.email ? 'border-destructive' : ''}`}
                       />
                       {errors.email && (
                         <p className="text-sm text-destructive">{errors.email}</p>
@@ -432,7 +516,7 @@ export default function Auth() {
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className={`bg-white/[0.03] border-white/10 text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:ring-primary/20 transition-all ${errors.password ? 'border-destructive' : ''}`}
+                        className={`${inputClassName} ${errors.password ? 'border-destructive' : ''}`}
                       />
                       {errors.password && (
                         <p className="text-sm text-destructive">{errors.password}</p>
@@ -450,6 +534,8 @@ export default function Auth() {
                       </span>
                     </Button>
                   </form>
+
+                  <SocialAndPhoneAuth />
                 </TabsContent>
 
                 <TabsContent value="signup" className="mt-0">
@@ -469,7 +555,7 @@ export default function Auth() {
                         placeholder="John Doe"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        className="bg-white/[0.03] border-white/10 text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:ring-primary/20 transition-all"
+                        className={inputClassName}
                       />
                     </div>
 
@@ -481,7 +567,7 @@ export default function Auth() {
                         placeholder="you@example.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className={`bg-white/[0.03] border-white/10 text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:ring-primary/20 transition-all ${errors.email ? 'border-destructive' : ''}`}
+                        className={`${inputClassName} ${errors.email ? 'border-destructive' : ''}`}
                       />
                       {errors.email && (
                         <p className="text-sm text-destructive">{errors.email}</p>
@@ -496,7 +582,7 @@ export default function Auth() {
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className={`bg-white/[0.03] border-white/10 text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:ring-primary/20 transition-all ${errors.password ? 'border-destructive' : ''}`}
+                        className={`${inputClassName} ${errors.password ? 'border-destructive' : ''}`}
                       />
                       {errors.password && (
                         <p className="text-sm text-destructive">{errors.password}</p>
@@ -514,6 +600,8 @@ export default function Auth() {
                       </span>
                     </Button>
                   </form>
+
+                  <SocialAndPhoneAuth />
                 </TabsContent>
               </CardContent>
             </Tabs>
