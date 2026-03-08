@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { lovable } from '@/integrations/lovable/index';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Pill, Heart, Shield, Sparkles, ArrowRight, Chrome } from 'lucide-react';
+import { Pill, Heart, Shield, Sparkles, ArrowRight } from 'lucide-react';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { ParticleGalaxy } from '@/components/ParticleGalaxy';
-import { Separator } from '@/components/ui/separator';
+
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
@@ -33,7 +33,7 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   const { signIn, signUp, user } = useAuth();
@@ -167,28 +167,6 @@ export default function Auth() {
     });
   };
 
-  const handleGoogleSignIn = async () => {
-    if (googleLoading) return;
-    setGoogleLoading(true);
-    try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
-      });
-      if (result?.error) {
-        toast({
-          title: 'Google sign in failed',
-          description: result.error.message || 'Could not sign in with Google.',
-        });
-      }
-    } catch {
-      toast({
-        title: 'Google sign in failed',
-        description: 'An unexpected error occurred.',
-      });
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
 
   const features = [
     { icon: Sparkles, text: 'AI-powered report analysis', color: 'text-blue-400', glow: 'rgba(59,130,246,0.2)' },
@@ -199,27 +177,6 @@ export default function Auth() {
 
   const inputClassName = "bg-white/[0.03] border-white/10 text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:ring-primary/20 transition-all";
 
-  const SocialAuth = () => (
-    <div className="space-y-4 mt-5">
-      <div className="relative">
-        <Separator className="bg-white/10" />
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[hsl(230,25%,7%)] px-3 text-xs text-foreground/40">
-          or continue with
-        </span>
-      </div>
-
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full h-12 bg-white/[0.03] border-white/10 text-foreground hover:bg-white/[0.06] hover:border-white/20 rounded-xl group"
-        onClick={handleGoogleSignIn}
-        disabled={googleLoading}
-      >
-        <Chrome className="h-5 w-5 mr-2 text-foreground/70" />
-        {googleLoading ? 'Connecting...' : 'Sign in with Google'}
-      </Button>
-    </div>
-  );
 
   return (
     <div
@@ -417,8 +374,6 @@ export default function Auth() {
                       </span>
                     </Button>
                   </form>
-
-                  <SocialAuth />
                 </TabsContent>
 
                 <TabsContent value="signup" className="mt-0">
@@ -483,8 +438,6 @@ export default function Auth() {
                       </span>
                     </Button>
                   </form>
-
-                  <SocialAuth />
                 </TabsContent>
               </CardContent>
             </Tabs>
