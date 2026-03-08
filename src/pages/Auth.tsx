@@ -484,7 +484,7 @@ export default function Auth() {
                     </Button>
                   </form>
 
-                  <SocialAndPhoneAuth />
+                  <SocialAuth />
                 </TabsContent>
               </CardContent>
             </Tabs>
