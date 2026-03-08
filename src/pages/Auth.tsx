@@ -12,7 +12,7 @@ import { Pill, Heart, Shield, Sparkles, ArrowRight } from 'lucide-react';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { ParticleGalaxy } from '@/components/ParticleGalaxy';
-import { Separator } from '@/components/ui/separator';
+
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
