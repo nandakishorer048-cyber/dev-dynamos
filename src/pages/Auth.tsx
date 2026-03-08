@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Pill, Heart, Shield, Sparkles, ArrowRight, Chrome } from 'lucide-react';
+import { Pill, Heart, Shield, Sparkles, ArrowRight } from 'lucide-react';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { ParticleGalaxy } from '@/components/ParticleGalaxy';
