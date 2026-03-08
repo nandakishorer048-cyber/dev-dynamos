@@ -20,7 +20,7 @@ const fadeIn = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] }
+    transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] as const }
   }
 };
 
@@ -40,7 +40,7 @@ const cardHover = {
   hover: {
     y: -10,
     scale: 1.03,
-    transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] }
+    transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const }
   }
 };
 
