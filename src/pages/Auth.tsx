@@ -1,19 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { lovable } from '@/integrations/lovable/index';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useToast } from '@/hooks/use-toast';
-import { Pill, Heart, Shield, Sparkles, ArrowRight } from 'lucide-react';
+import { Pill, Heart, Shield, Sparkles, ArrowRight, Phone, Chrome } from 'lucide-react';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { ParticleGalaxy } from '@/components/ParticleGalaxy';
+import { Separator } from '@/components/ui/separator';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
+const phoneSchema = z.string().regex(/^\+[1-9]\d{6,14}$/, 'Enter phone with country code (e.g. +1234567890)');
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
