@@ -177,27 +177,6 @@ export default function Auth() {
 
   const inputClassName = "bg-white/[0.03] border-white/10 text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:ring-primary/20 transition-all";
 
-  const SocialAuth = () => (
-    <div className="space-y-4 mt-5">
-      <div className="relative">
-        <Separator className="bg-white/10" />
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[hsl(230,25%,7%)] px-3 text-xs text-foreground/40">
-          or continue with
-        </span>
-      </div>
-
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full h-12 bg-white/[0.03] border-white/10 text-foreground hover:bg-white/[0.06] hover:border-white/20 rounded-xl group"
-        onClick={handleGoogleSignIn}
-        disabled={googleLoading}
-      >
-        <Chrome className="h-5 w-5 mr-2 text-foreground/70" />
-        {googleLoading ? 'Connecting...' : 'Sign in with Google'}
-      </Button>
-    </div>
-  );
 
   return (
     <div
