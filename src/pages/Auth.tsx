@@ -374,8 +374,6 @@ export default function Auth() {
                       </span>
                     </Button>
                   </form>
-
-                  <SocialAuth />
                 </TabsContent>
 
                 <TabsContent value="signup" className="mt-0">
