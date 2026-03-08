@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { lovable } from '@/integrations/lovable/index';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useToast } from '@/hooks/use-toast';
-import { Pill, Heart, Shield, Sparkles, ArrowRight, Phone, Chrome } from 'lucide-react';
+import { Pill, Heart, Shield, Sparkles, ArrowRight, Chrome } from 'lucide-react';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { ParticleGalaxy } from '@/components/ParticleGalaxy';
@@ -18,7 +16,7 @@ import { Separator } from '@/components/ui/separator';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
-const phoneSchema = z.string().regex(/^\+[1-9]\d{6,14}$/, 'Enter phone with country code (e.g. +1234567890)');
+
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -34,13 +32,9 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [phoneLoading, setPhoneLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; phone?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
@@ -196,55 +190,6 @@ export default function Auth() {
     }
   };
 
-  const handleSendOtp = async () => {
-    const phoneResult = phoneSchema.safeParse(phone);
-    if (!phoneResult.success) {
-      setErrors({ phone: phoneResult.error.errors[0].message });
-      return;
-    }
-    setErrors({});
-    setPhoneLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({ phone });
-    setPhoneLoading(false);
-
-    if (error) {
-      toast({
-        title: 'Failed to send OTP',
-        description: error.message,
-      });
-      return;
-    }
-
-    setOtpSent(true);
-    toast({
-      title: 'OTP Sent! 📱',
-      description: 'Check your phone for the verification code.',
-    });
-  };
-
-  const handleVerifyOtp = async () => {
-    if (otp.length !== 6) return;
-    setPhoneLoading(true);
-    const { data, error } = await supabase.auth.verifyOtp({
-      phone,
-      token: otp,
-      type: 'sms',
-    });
-    setPhoneLoading(false);
-
-    if (error) {
-      toast({
-        title: 'Verification failed',
-        description: error.message,
-      });
-      return;
-    }
-
-    if (data.session) {
-      navigate('/dashboard');
-    }
-  };
-
   const features = [
     { icon: Sparkles, text: 'AI-powered report analysis', color: 'text-blue-400', glow: 'rgba(59,130,246,0.2)' },
     { icon: Pill, text: 'Smart medication tracking', color: 'text-purple-400', glow: 'rgba(139,92,246,0.2)' },
@@ -254,7 +199,7 @@ export default function Auth() {
 
   const inputClassName = "bg-white/[0.03] border-white/10 text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:ring-primary/20 transition-all";
 
-  const SocialAndPhoneAuth = () => (
+  const SocialAuth = () => (
     <div className="space-y-4 mt-5">
       <div className="relative">
         <Separator className="bg-white/10" />
@@ -273,68 +218,6 @@ export default function Auth() {
         <Chrome className="h-5 w-5 mr-2 text-foreground/70" />
         {googleLoading ? 'Connecting...' : 'Sign in with Google'}
       </Button>
-
-      <div className="space-y-3">
-        {!otpSent ? (
-          <div className="space-y-2">
-            <Label className="text-foreground/70 flex items-center gap-2">
-              <Phone className="h-3.5 w-3.5" /> Phone Number
-            </Label>
-            <div className="flex gap-2">
-              <Input
-                type="tel"
-                placeholder="+1234567890"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className={`flex-1 ${inputClassName} ${errors.phone ? 'border-destructive' : ''}`}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                className="bg-white/[0.03] border-white/10 text-foreground hover:bg-white/[0.06] hover:border-white/20 rounded-xl whitespace-nowrap"
-                onClick={handleSendOtp}
-                disabled={phoneLoading}
-              >
-                {phoneLoading ? 'Sending...' : 'Send OTP'}
-              </Button>
-            </div>
-            {errors.phone && (
-              <p className="text-sm text-destructive">{errors.phone}</p>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <Label className="text-foreground/70">Enter OTP sent to {phone}</Label>
-            <div className="flex justify-center">
-              <InputOTP maxLength={6} value={otp} onChange={setOtp}>
-                <InputOTPGroup>
-                  {[0, 1, 2, 3, 4, 5].map((i) => (
-                    <InputOTPSlot key={i} index={i} className="bg-white/[0.03] border-white/10 text-foreground" />
-                  ))}
-                </InputOTPGroup>
-              </InputOTP>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                className="flex-1 text-foreground/50 hover:text-foreground"
-                onClick={() => { setOtpSent(false); setOtp(''); }}
-              >
-                Change number
-              </Button>
-              <Button
-                type="button"
-                className="flex-1 btn-glow btn-sweep text-white border-0 rounded-xl"
-                onClick={handleVerifyOtp}
-                disabled={phoneLoading || otp.length !== 6}
-              >
-                {phoneLoading ? 'Verifying...' : 'Verify OTP'}
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 
@@ -535,7 +418,7 @@ export default function Auth() {
                     </Button>
                   </form>
 
-                  <SocialAndPhoneAuth />
+                  <SocialAuth />
                 </TabsContent>
 
                 <TabsContent value="signup" className="mt-0">
@@ -601,7 +484,7 @@ export default function Auth() {
                     </Button>
                   </form>
 
-                  <SocialAndPhoneAuth />
+                  <SocialAuth />
                 </TabsContent>
               </CardContent>
             </Tabs>
