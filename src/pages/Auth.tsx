@@ -17,7 +17,7 @@ import { Separator } from '@/components/ui/separator';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
-const phoneSchema = z.string().regex(/^\+[1-9]\d{6,14}$/, 'Enter phone with country code (e.g. +1234567890)');
+
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
