@@ -190,6 +190,15 @@ export default function Auth() {
     }
   };
 
+  const features = [
+    { icon: Sparkles, text: 'AI-powered report analysis', color: 'text-blue-400', glow: 'rgba(59,130,246,0.2)' },
+    { icon: Pill, text: 'Smart medication tracking', color: 'text-purple-400', glow: 'rgba(139,92,246,0.2)' },
+    { icon: Heart, text: 'Personalized health insights', color: 'text-cyan-400', glow: 'rgba(14,165,233,0.2)' },
+    { icon: Shield, text: 'Secure & private data', color: 'text-indigo-400', glow: 'rgba(99,102,241,0.2)' },
+  ];
+
+  const inputClassName = "bg-white/[0.03] border-white/10 text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:ring-primary/20 transition-all";
+
   const SocialAuth = () => (
     <div className="space-y-4 mt-5">
       <div className="relative">
