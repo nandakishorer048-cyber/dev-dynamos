@@ -8,6 +8,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null; session: Session | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null; session: Session | null }>;
+  signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -18,6 +19,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Track whether we're processing an OAuth callback (tokens in URL hash)
+  const isOAuthCallback = useRef(
+    typeof window !== 'undefined' && window.location.hash.includes('access_token')
+  );
 
   const hasRecoveredSessionRef = useRef(false);
 
@@ -121,6 +126,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(nextSession?.user ?? null);
       setLoading(false);
 
+      // If this was an OAuth callback and we got a session, clean up the hash
+      if (isOAuthCallback.current && nextSession) {
+        isOAuthCallback.current = false;
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+
       runAfterAuthCallback(() => {
         if (isSessionRefreshTokenValid(nextSession)) {
           startAutoRefreshSafely(nextSession);
@@ -167,7 +178,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    void initializeSession();
+    // During OAuth callbacks, skip manual session init — let onAuthStateChange handle it
+    if (!isOAuthCallback.current) {
+      void initializeSession();
+    }
 
     return () => {
       isMounted = false;
@@ -251,12 +265,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      const redirectTo = `${window.location.origin}/dashboard`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo },
+      });
+      return { error: error ? normalizeAuthError(error) : null };
+    } catch (err) {
+      return { error: normalizeAuthError(err) };
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut({ scope: 'local' });
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signInWithGoogle, signOut }}>
       {children}
     </AuthContext.Provider>
   );
