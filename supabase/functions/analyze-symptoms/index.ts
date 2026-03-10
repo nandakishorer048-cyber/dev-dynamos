@@ -36,8 +36,8 @@ serve(async (req) => {
     }
 
     const { symptoms, age, gender } = validation.data;
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
 
     const systemPrompt = `You are a medical guidance AI assistant. Analyze user symptoms and provide structured guidance.
 
@@ -64,12 +64,15 @@ Respond ONLY with a valid JSON object (no markdown, no code fences) with this ex
 
     const userPrompt = `Patient symptoms: ${symptoms}${age ? `\nAge: ${age}` : ''}${gender ? `\nGender: ${gender}` : ''}`;
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
       method: "POST",
-      headers: { "Authorization": `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+        contents: [
+          { role: "user", parts: [{ text: systemPrompt }] },
+          { role: "model", parts: [{ text: "Understood." }] },
+          { role: "user", parts: [{ text: userPrompt }] }
+        ]
       }),
     });
 
@@ -81,7 +84,7 @@ Respond ONLY with a valid JSON object (no markdown, no code fences) with this ex
     }
 
     const aiData = await response.json();
-    const content = aiData.choices?.[0]?.message?.content;
+    const content = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!content) throw new Error("No AI response content");
 
     let parsed;

@@ -42,8 +42,8 @@ serve(async (req) => {
     }
 
     const { messages } = validation.data;
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     console.log("Processing patient chat request with", messages.length, "messages");
 
@@ -68,13 +68,18 @@ Important guidelines:
 
 Remember: You're here to support and educate, not to replace professional medical advice.`;
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:streamGenerateContent?key=${GEMINI_API_KEY}`, {
       method: "POST",
-      headers: { "Authorization": `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "system", content: systemPrompt }, ...messages],
-        stream: true,
+        contents: [
+          { role: "user", parts: [{ text: systemPrompt }] },
+          { role: "model", parts: [{ text: "Understood. I will act as Diagnyx AI." }] },
+          ...messages.map((m: any) => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content }]
+          }))
+        ]
       }),
     });
 
