@@ -73,29 +73,31 @@ export function PatientChatbot() {
 
           if (line.endsWith('\r')) line = line.slice(0, -1);
           if (line.startsWith(':') || line.trim() === '') continue;
-          if (!line.startsWith('data: ')) continue;
+          if (line.startsWith('data:')) {
+            if (!line.startsWith('data: ')) continue;
 
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') break;
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr === '[DONE]') break;
 
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) {
-              assistantContent += content;
-              setMessages((prev) => {
-                const last = prev[prev.length - 1];
-                if (last?.role === 'assistant' && prev.length > 1) {
-                  return prev.map((m, i) =>
-                    i === prev.length - 1 ? { ...m, content: assistantContent } : m
-                  );
-                }
-                return [...prev, { role: 'assistant', content: assistantContent }];
-              });
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+              if (content) {
+                assistantContent += content;
+                setMessages((prev) => {
+                  const last = prev[prev.length - 1];
+                  if (last?.role === 'assistant' && prev.length > 1) {
+                    return prev.map((m, i) =>
+                      i === prev.length - 1 ? { ...m, content: assistantContent } : m
+                    );
+                  }
+                  return [...prev, { role: 'assistant', content: assistantContent }];
+                });
+              }
+            } catch {
+              textBuffer = line + '\n' + textBuffer;
+              break;
             }
-          } catch {
-            textBuffer = line + '\n' + textBuffer;
-            break;
           }
         }
       }
