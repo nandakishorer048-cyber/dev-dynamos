@@ -163,14 +163,18 @@ export default function Index() {
         <div className="container flex h-16 items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-3">
             <motion.div
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-white"
-              style={{
-                background: 'linear-gradient(135deg, hsl(210 100% 56%), hsl(185 85% 50%))',
-                boxShadow: '0 0 20px rgba(59, 130, 246, 0.4)',
-              }}
+              className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden shadow-md"
               whileHover={{ scale: 1.1, rotate: 5 }}
             >
-              <Pill className="h-5 w-5" />
+              <img 
+                src="/logo.png" 
+                alt="Diagnyx Logo" 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
+              />
             </motion.div>
             <span className="text-xl font-heading font-bold gradient-text">Diagnyx AI</span>
           </div>
@@ -451,13 +455,17 @@ export default function Index() {
         <div className="container flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <div
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-white"
-              style={{
-                background: 'linear-gradient(135deg, hsl(210 100% 56%), hsl(185 85% 50%))',
-                boxShadow: '0 0 12px rgba(59, 130, 246, 0.3)',
-              }}
+              className="flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden shadow-sm"
             >
-              <Pill className="h-4 w-4" />
+              <img 
+                src="/logo.png" 
+                alt="Diagnyx Logo" 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
+              />
             </div>
             <span className="font-heading font-bold gradient-text">Diagnyx AI</span>
           </div>

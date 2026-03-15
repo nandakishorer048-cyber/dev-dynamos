@@ -63,15 +63,26 @@ export function AppLayout({ children }: AppLayoutProps) {
           {/* Logo */}
           <div className="flex h-20 items-center gap-3 px-6" style={{ borderBottom: '1px solid rgba(100, 140, 220, 0.08)' }}>
             <motion.div
-              className="flex h-12 w-12 items-center justify-center rounded-2xl text-white"
-              style={{
-                background: 'linear-gradient(135deg, hsl(210 100% 56%) 0%, hsl(185 85% 50%) 100%)',
-                boxShadow: '0 0 20px rgba(59, 130, 246, 0.4), 0 4px 12px rgba(0,0,0,0.3)',
-              }}
+              className="flex h-12 w-12 items-center justify-center rounded-2xl overflow-hidden shadow-lg"
               whileHover={{ scale: 1.1, rotate: 5 }}
               transition={{ type: 'spring', stiffness: 300 }}
             >
-              <Pill className="h-6 w-6" />
+              <img 
+                src="/logo.png" 
+                alt="Diagnyx Logo" 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent) {
+                    const icon = document.createElement('div');
+                    icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pill"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>';
+                    icon.className = 'text-white';
+                    parent.appendChild(icon);
+                  }
+                }}
+              />
             </motion.div>
             <div>
               <span className="text-xl font-heading font-bold gradient-text">
@@ -165,13 +176,17 @@ export function AppLayout({ children }: AppLayoutProps) {
       >
         <div className="flex items-center gap-3">
           <div
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-white"
-            style={{
-              background: 'linear-gradient(135deg, hsl(210 100% 56%) 0%, hsl(185 85% 50%) 100%)',
-              boxShadow: '0 0 15px rgba(59, 130, 246, 0.4)',
-            }}
+            className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden shadow-md"
           >
-            <Pill className="h-5 w-5" />
+            <img 
+              src="/logo.png" 
+              alt="Diagnyx Logo" 
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
           </div>
           <span className="text-lg font-heading font-bold gradient-text">Diagnyx AI</span>
         </div>
