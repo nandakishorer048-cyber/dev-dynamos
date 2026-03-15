@@ -132,6 +132,9 @@ export default function Medications() {
       let aiExplanation = null;
       if (!aiError && aiData?.explanation) {
         aiExplanation = JSON.stringify(aiData.explanation);
+      } else if (aiError) {
+        console.error("AI Explanation skipped due to error:", aiError);
+        // We continue saving without AI explanation if it's just busy
       }
 
       setExplaining(false);

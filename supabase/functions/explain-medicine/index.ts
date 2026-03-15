@@ -39,15 +39,15 @@ serve(async (req) => {
     }
 
     const { medicineName, dosage, purpose, language } = validation.data;
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
+    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
+    if (!OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY is not configured');
 
     const languageNames: Record<string, string> = { en: 'English', es: 'Spanish', fr: 'French', de: 'German', hi: 'Hindi', pt: 'Portuguese', ar: 'Arabic', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' };
     const targetLanguage = languageNames[language] || 'English';
 
     console.log('Explaining medicine:', { medicineName, dosage, language: targetLanguage });
 
-    const systemPrompt = `You are a friendly, knowledgeable pharmacy assistant. Your job is to help patients understand their medications in simple, easy-to-understand language.
+    const prompt = `You are a friendly, knowledgeable pharmacy assistant. Your job is to help patients understand their medications in simple, easy-to-understand language.
 
 IMPORTANT: You MUST respond entirely in ${targetLanguage}. All text in your response must be in ${targetLanguage}.
 
@@ -66,44 +66,80 @@ Important guidelines:
 - Be encouraging and helpful
 - ALL TEXT MUST BE IN ${targetLanguage}
 
-Return your response in this JSON format (with all text values in ${targetLanguage}):
+Return ONLY a valid JSON object (no markdown, no code fences) with all text values in ${targetLanguage}:
 {
-  "simpleName": "Common name or brand in ${targetLanguage}",
-  "whatItDoes": "Simple 1-2 sentence explanation in ${targetLanguage}",
-  "howItWorks": "Brief friendly explanation in ${targetLanguage}",
-  "commonSideEffects": ["Side effects in ${targetLanguage}"],
-  "importantPrecautions": ["Precautions in ${targetLanguage}"],
-  "tips": ["Helpful tips in ${targetLanguage}"],
-  "foodInteractions": ["Food info in ${targetLanguage}"],
-  "whenToCallDoctor": ["Warning signs in ${targetLanguage}"]
-}`;
+  "simpleName": "Common name or brand",
+  "whatItDoes": "Simple 1-2 sentence explanation",
+  "howItWorks": "Brief friendly explanation",
+  "commonSideEffects": ["Side effects"],
+  "importantPrecautions": ["Precautions"],
+  "tips": ["Helpful tips"],
+  "foodInteractions": ["Food info"],
+  "whenToCallDoctor": ["Warning signs"]
+}
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Please explain this medication:\n\nMedicine: ${medicineName}\nDosage: ${dosage || 'Not specified'}\nPrescribed for: ${purpose || 'General use'}` }
-        ],
-        response_format: { type: "json_object" }
-      }),
-    });
+Medicine: ${medicineName}
+Dosage: ${dosage || 'Not specified'}
+Prescribed for: ${purpose || 'General use'}`;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
-      if (response.status === 429) return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      if (response.status === 402) return new Response(JSON.stringify({ error: 'AI credits depleted. Please add more credits.' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      throw new Error(`AI gateway error: ${response.status}`);
+    const models = [
+      "google/gemini-2.0-flash-lite-preview-02-05:free",
+      "meta-llama/llama-3.3-70b-instruct:free",
+      "google/gemma-3-27b-it:free",
+      "openrouter/free"
+    ];
+
+    let response;
+    let lastError = "";
+
+    for (const model of models) {
+      console.log(`Trying model: ${model}`);
+      try {
+        response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+            "HTTP-Referer": "https://healthronix.com",
+            "X-Title": "Healthronix App"
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: [{ role: 'user', content: prompt }]
+          }),
+        });
+
+        if (response.ok) {
+          console.log(`Successfully connected to ${model}`);
+          break; // Success! Exit the loop
+        } else {
+          lastError = await response.text();
+          console.error(`Error with ${model}:`, response.status, lastError);
+        }
+      } catch (err: any) {
+        console.error(`Fetch failed for ${model}:`, err);
+        lastError = err.message;
+      }
+    }
+
+    if (!response || !response.ok) {
+      return new Response(JSON.stringify({ error: "All AI models are currently busy. Please try again later." }), { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const data = await response.json();
-    const explanation = data.choices[0].message.content;
-    console.log('Medicine explanation completed successfully');
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) throw new Error('No AI response content');
 
-    return new Response(JSON.stringify({ explanation: JSON.parse(explanation) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    let explanation;
+    try {
+      const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      explanation = JSON.parse(cleaned);
+    } catch {
+      explanation = { simpleName: medicineName, whatItDoes: content, howItWorks: '', commonSideEffects: [], importantPrecautions: [], tips: ['Consult your pharmacist for more details'], foodInteractions: [], whenToCallDoctor: [] };
+    }
+
+    console.log('Medicine explanation completed successfully');
+    return new Response(JSON.stringify({ explanation }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error: unknown) {
     console.error('Error explaining medicine:', error);
     return new Response(JSON.stringify({ error: 'An error occurred processing your request' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

@@ -40,15 +40,15 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Invalid input', details: validation.error.errors }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { reportText, reportType, language, imageData, fileName, mimeType } = validation.data;
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
+    const { reportText, reportType, language, imageData, mimeType } = validation.data;
+    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
+    if (!OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY is not configured');
 
     const languageNames: Record<string, string> = { en: 'English', es: 'Spanish', fr: 'French', de: 'German', hi: 'Hindi', pt: 'Portuguese', ar: 'Arabic', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' };
     const targetLanguage = languageNames[language] || 'English';
     const isImageAnalysis = !!imageData;
 
-    console.log('Analyzing medical report:', { reportType, textLength: reportText?.length, language: targetLanguage, isImageAnalysis, fileName: fileName || 'N/A' });
+    console.log('Analyzing medical report:', { reportType, textLength: reportText?.length, language: targetLanguage, isImageAnalysis });
 
     const systemPrompt = `You are a friendly, compassionate medical report analyzer. Your job is to help patients understand their medical reports in simple, easy-to-understand language.
 
@@ -70,48 +70,132 @@ Important guidelines:
 - ALL TEXT MUST BE IN ${targetLanguage}
 ${isImageAnalysis ? '- Extract all text and values you can see from the image/document\n- If parts are unclear, mention that in your analysis' : ''}
 
-Return your response in this JSON format (with all text values in ${targetLanguage}):
+Return ONLY a valid JSON object (no markdown, no code fences) with all text values in ${targetLanguage}:
 {
-  "summary": "A 2-3 sentence friendly overview in ${targetLanguage}",
-  "keyFindings": [{ "name": "Finding name", "value": "The value", "status": "normal" | "attention" | "concerning", "explanation": "Simple explanation" }],
+  "summary": "A 2-3 sentence friendly overview",
+  "keyFindings": [{ "name": "Finding name", "value": "The value", "status": "normal", "explanation": "Simple explanation" }],
   "recommendations": ["List of suggestions"],
   "questionsForDoctor": ["Questions"]
 }`;
 
-    const messages: any[] = [{ role: 'system', content: systemPrompt }];
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
 
-    if (isImageAnalysis) {
-      const userContent: any[] = [{ type: 'text', text: `Please analyze this ${reportType || 'medical'} report image/document and extract all relevant information:` }];
-      if (imageData!.startsWith('data:')) {
-        userContent.push({ type: 'image_url', image_url: { url: imageData } });
+    let response;
+    let lastError = "";
+    
+    // If it's an image analysis, route directly to Google's official Gemini API (which has a generous free tier for images)
+    if (isImageAnalysis && imageData && GEMINI_API_KEY) {
+      console.log('Routing image analysis directly to Gemini API');
+      const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
+      const imageMimeType = mimeType || 'image/jpeg';
+      
+      try {
+        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            system_instruction: {
+              parts: { text: systemPrompt }
+            },
+            contents: [
+              {
+                role: "user", 
+                parts: [
+                  { text: `Please analyze this ${reportType || 'medical'} report document and extract all relevant information.` },
+                  { 
+                    inlineData: {
+                      mimeType: imageMimeType,
+                      data: base64Data
+                    }
+                  }
+                ]
+              }
+            ],
+            generationConfig: {
+              responseMimeType: "application/json"
+            }
+          })
+        });
+
+        if (!response.ok) {
+          lastError = await response.text();
+          console.error("Gemini API error:", response.status, lastError);
+        } else {
+          console.log("Successfully connected to Gemini direct API");
+        }
+      } catch (err: any) {
+        console.error("Gemini API fetch failed:", err);
+        lastError = err.message;
       }
-      messages.push({ role: 'user', content: userContent });
     } else {
-      messages.push({ role: 'user', content: `Please analyze this ${reportType || 'medical'} report:\n\n${reportText}` });
+      // Build OpenRouter content parts for TEXT ONLY
+      const userContent = `${systemPrompt}\n\nPlease analyze this ${reportType || 'medical'} report:\n\n${reportText}`;
+      
+      const models = [
+        "google/gemini-2.0-flash-lite-preview-02-05:free",
+        "google/gemma-3-27b-it:free",
+        "openrouter/free"
+      ];
+
+      for (const model of models) {
+        console.log(`Trying model: ${model} for text analysis`);
+        try {
+          response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+              "HTTP-Referer": "https://healthronix.com",
+              "X-Title": "Healthronix App"
+            },
+            body: JSON.stringify({
+              model: model,
+              messages: [{ role: 'user', content: userContent }]
+            }),
+          });
+
+          if (response.ok) {
+            console.log(`Successfully connected to ${model}`);
+            break; // Success! Exit the loop
+          } else {
+            lastError = await response.text();
+            console.error(`Error with ${model}:`, response.status, lastError);
+          }
+        } catch (err: any) {
+          console.error(`Fetch failed for ${model}:`, err);
+          lastError = err.message;
+        }
+      }
     }
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'google/gemini-2.5-flash', messages, response_format: { type: "json_object" } }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
-      if (response.status === 429) return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      if (response.status === 402) return new Response(JSON.stringify({ error: 'AI credits depleted. Please add more credits.' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      throw new Error(`AI gateway error: ${response.status}`);
+    if (!response || !response.ok) {
+      return new Response(JSON.stringify({ error: "All AI models are currently busy. Please try again later." }), { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const data = await response.json();
-    const analysis = data.choices[0].message.content;
-    console.log('Analysis completed successfully');
+    let content = "";
+    
+    // Extract content based on which API was successful
+    if (data.choices && data.choices[0].message) {
+      content = data.choices[0].message.content; // OpenRouter format
+    } else if (data.candidates && data.candidates[0].content) {
+      content = data.candidates[0].content.parts[0].text; // Gemini direct format
+    }
+    
+    if (!content) throw new Error('No AI response content');
 
-    return new Response(JSON.stringify({ analysis: JSON.parse(analysis) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    let analysis;
+    try {
+      const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      analysis = JSON.parse(cleaned);
+    } catch {
+      analysis = { summary: content, keyFindings: [], recommendations: ['Consult a healthcare professional'], questionsForDoctor: [] };
+    }
+
+    console.log('Analysis completed successfully');
+    return new Response(JSON.stringify({ analysis }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error: unknown) {
     console.error('Error analyzing report:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
     return new Response(JSON.stringify({ error: 'An error occurred processing your request' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });

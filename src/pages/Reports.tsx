@@ -206,7 +206,14 @@ export default function Reports() {
         body: requestBody,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase edge function error:", error);
+        let msg = error.message || "Unknown error";
+        if (msg.includes('non-2xx') || error.name === 'FunctionsHttpError') {
+          msg = "All AI visual models are currently busy or rate-limited on the free tier. Please try the 'Paste Text' option instead!";
+        }
+        throw new Error(msg);
+      }
 
       // Save to database
       const { data: savedReport, error: saveError } = await supabase

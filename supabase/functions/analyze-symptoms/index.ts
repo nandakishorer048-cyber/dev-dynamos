@@ -23,11 +23,11 @@ serve(async (req) => {
     }
     const supabaseClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
     const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: authError } = await supabaseClient.auth.getClaims(token);
-    if (authError || !claimsData?.claims) {
+    const { data: userData, error: authError } = await supabaseClient.auth.getUser(token);
+    if (authError || !userData?.user) {
       return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-    const userId = claimsData.claims.sub as string;
+    const userId = userData.user.id;
 
     const rawBody = await req.json();
     const validation = inputSchema.safeParse(rawBody);
@@ -36,8 +36,8 @@ serve(async (req) => {
     }
 
     const { symptoms, age, gender } = validation.data;
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
+    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
+    if (!OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY not configured");
 
     const systemPrompt = `You are a medical guidance AI assistant. Analyze user symptoms and provide structured guidance.
 
@@ -62,29 +62,57 @@ Respond ONLY with a valid JSON object (no markdown, no code fences) with this ex
   "summary": "A brief, empathetic summary of the analysis"
 }`;
 
-    const userPrompt = `Patient symptoms: ${symptoms}${age ? `\nAge: ${age}` : ''}${gender ? `\nGender: ${gender}` : ''}`;
+    const openRouterMessages = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: `Patient symptoms: ${symptoms}${age ? `\nAge: ${age}` : ''}${gender ? `\nGender: ${gender}` : ''}` }
+    ];
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          { role: "user", parts: [{ text: systemPrompt }] },
-          { role: "model", parts: [{ text: "Understood." }] },
-          { role: "user", parts: [{ text: userPrompt }] }
-        ]
-      }),
-    });
+    const models = [
+      "google/gemini-2.0-flash-lite-preview-02-05:free",
+      "meta-llama/llama-3.3-70b-instruct:free",
+      "google/gemma-3-27b-it:free",
+      "openrouter/free"
+    ];
 
-    if (!response.ok) {
-      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limited, try again later." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      const errorText = await response.text();
-      console.error("AI error:", response.status, errorText);
-      throw new Error(`AI error: ${response.status}`);
+    let response;
+    let lastError = "";
+
+    for (const model of models) {
+      console.log(`Trying model: ${model}`);
+      try {
+        response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+            "HTTP-Referer": "https://healthronix.com",
+            "X-Title": "Healthronix App"
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: openRouterMessages
+          }),
+        });
+
+        if (response.ok) {
+          console.log(`Successfully connected to ${model}`);
+          break; // Success! Exit the loop
+        } else {
+          lastError = await response.text();
+          console.error(`Error with ${model}:`, response.status, lastError);
+        }
+      } catch (err: any) {
+        console.error(`Fetch failed for ${model}:`, err);
+        lastError = err.message;
+      }
+    }
+
+    if (!response || !response.ok) {
+      return new Response(JSON.stringify({ error: "All AI models are currently busy. Please try again later." }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const aiData = await response.json();
-    const content = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    const content = aiData.choices?.[0]?.message?.content;
     if (!content) throw new Error("No AI response content");
 
     let parsed;

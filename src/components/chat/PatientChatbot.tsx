@@ -77,26 +77,26 @@ export function PatientChatbot() {
             const jsonStr = line.slice(5).trim();
             if (!jsonStr) continue;
 
+            if (jsonStr === '[DONE]') continue;
+
             try {
               const parsed = JSON.parse(jsonStr);
-              const candidates = parsed.candidates || [];
+              const content = parsed.choices?.[0]?.delta?.content || 
+                              parsed.candidates?.[0]?.content?.parts?.[0]?.text;
 
-              for (const candidate of candidates) {
-                const content = candidate.content?.parts?.[0]?.text;
-                if (content) {
-                  assistantContent += content;
-                  setMessages((prev) => {
-                    const last = prev[prev.length - 1];
-                    if (last?.role === 'assistant' && prev.length > 1) {
-                      return prev.map((m, i) =>
-                        i === prev.length - 1 ? { ...m, content: assistantContent } : m
-                      );
-                    }
-                    return [...prev, { role: 'assistant', content: assistantContent }];
-                  });
-                }
+              if (content) {
+                assistantContent += content;
+                setMessages((prev) => {
+                  const last = prev[prev.length - 1];
+                  if (last?.role === 'assistant' && prev.length > 1) {
+                    return prev.map((m, i) =>
+                      i === prev.length - 1 ? { ...m, content: assistantContent } : m
+                    );
+                  }
+                  return [...prev, { role: 'assistant', content: assistantContent }];
+                });
               }
-            } catch {
+            } catch (e) {
               textBuffer = line + '\n' + textBuffer;
               break;
             }
