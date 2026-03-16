@@ -9,7 +9,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { EmergencyButton } from "@/components/EmergencyButton";
 import { PatientChatbot } from "@/components/chat/PatientChatbot";
 import { useReminderNotifications } from "@/hooks/useReminderNotifications";
-import { CustomCursor } from "@/components/CustomCursor";
+// Custom cursor removed for light theme
 
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
