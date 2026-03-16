@@ -145,7 +145,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <CustomCursor />
+      {/* CustomCursor removed for light theme */}
       <BrowserRouter>
         <AuthProvider>
           <AppRoutes />
