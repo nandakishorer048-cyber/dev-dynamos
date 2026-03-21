@@ -332,12 +332,7 @@ export default function Vitals() {
                 </Button>
               </DialogTrigger>
               <DialogContent
-                className="max-w-md"
-                style={{
-                  background: 'rgba(15, 20, 35, 0.9)',
-                  backdropFilter: 'blur(24px)',
-                  border: '1px solid rgba(100, 140, 220, 0.12)',
-                }}
+                className="max-w-md bg-background/95 backdrop-blur-xl border border-border shadow-lg"
               >
                 <DialogHeader>
                   <DialogTitle className="text-foreground">Add Vital Reading</DialogTitle>
@@ -350,37 +345,37 @@ export default function Vitals() {
                     <div className="space-y-2">
                       <Label className="text-foreground/70">Systolic BP</Label>
                       <Input type="number" placeholder="120" value={systolicBp} onChange={(e) => setSystolicBp(e.target.value)}
-                        className="bg-white/[0.03] border-white/10 text-foreground" />
+                        className="bg-muted/30 border-input text-foreground" />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-foreground/70">Diastolic BP</Label>
                       <Input type="number" placeholder="80" value={diastolicBp} onChange={(e) => setDiastolicBp(e.target.value)}
-                        className="bg-white/[0.03] border-white/10 text-foreground" />
+                        className="bg-muted/30 border-input text-foreground" />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-foreground/70">Blood Sugar (mg/dL)</Label>
                     <Input type="number" step="0.1" placeholder="100" value={bloodSugar} onChange={(e) => setBloodSugar(e.target.value)}
-                      className="bg-white/[0.03] border-white/10 text-foreground" />
+                      className="bg-muted/30 border-input text-foreground" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-foreground/70">Pulse Rate (bpm)</Label>
                     <Input type="number" placeholder="72" value={pulseRate} onChange={(e) => setPulseRate(e.target.value)}
-                      className="bg-white/[0.03] border-white/10 text-foreground" />
+                      className="bg-muted/30 border-input text-foreground" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-foreground/70">Oxygen Level (%)</Label>
                     <Input type="number" step="0.1" placeholder="98" max="100" value={oxygenLevel} onChange={(e) => setOxygenLevel(e.target.value)}
-                      className="bg-white/[0.03] border-white/10 text-foreground" />
+                      className="bg-muted/30 border-input text-foreground" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-foreground/70">Notes</Label>
                     <Textarea placeholder="Any observations..." value={notes} onChange={(e) => setNotes(e.target.value)}
-                      className="bg-white/[0.03] border-white/10 text-foreground" />
+                      className="bg-muted/30 border-input text-foreground" />
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}
-                      className="rounded-xl text-foreground/60" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(100,140,220,0.1)' }}>
+                      className="rounded-xl text-foreground/60 bg-muted/50 border-input hover:bg-muted hover:text-foreground">
                       Cancel
                     </Button>
                     <Button type="submit" disabled={saving} className="btn-glow text-white border-0 rounded-xl">
@@ -396,12 +391,7 @@ export default function Vitals() {
         {/* ═══ SCAN MODAL ═══ */}
         <Dialog open={scanModalOpen} onOpenChange={(open) => { setScanModalOpen(open); if (!open) stopScan(); }}>
           <DialogContent
-            className="max-w-lg"
-            style={{
-              background: 'rgba(10, 15, 28, 0.95)',
-              backdropFilter: 'blur(24px)',
-              border: '1px solid rgba(100, 140, 220, 0.12)',
-            }}
+            className="max-w-lg bg-background/95 backdrop-blur-xl border border-border shadow-lg"
           >
             <DialogHeader>
               <DialogTitle className="text-foreground flex items-center gap-2">
@@ -423,11 +413,7 @@ export default function Vitals() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.1, duration: 0.4 }}
-                    className="flex items-center justify-between p-4 rounded-2xl transition-all hover:-translate-y-0.5"
-                    style={{
-                      background: 'rgba(255,255,255,0.03)',
-                      border: '1px solid rgba(100,140,220,0.08)',
-                    }}
+                    className="flex items-center justify-between p-4 rounded-2xl transition-all hover:-translate-y-0.5 bg-card/60 backdrop-blur-md border border-border shadow-sm"
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
@@ -484,12 +470,8 @@ export default function Vitals() {
                     key={device.id}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="flex-shrink-0 flex items-center gap-4 px-5 py-3 rounded-2xl"
-                    style={{
-                      background: 'rgba(16,185,129,0.06)',
-                      border: '1px solid rgba(16,185,129,0.15)',
-                      minWidth: '280px',
-                    }}
+                    className="flex-shrink-0 flex items-center gap-4 px-5 py-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20"
+                    style={{ minWidth: '280px' }}
                   >
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
                       <DeviceIcon type={device.type} />
@@ -538,20 +520,17 @@ export default function Vitals() {
             return (
               <motion.div key={cfg.key} variants={fadeIn}>
                 <Card
-                  className="group overflow-hidden relative transition-all duration-400 hover:-translate-y-1"
+                  className="group overflow-hidden relative transition-all duration-300 hover:-translate-y-1 bg-card/60 backdrop-blur-xl border-border shadow-sm dark:bg-slate-900/40"
                   style={{
-                    background: 'rgba(15,20,35,0.5)',
-                    backdropFilter: 'blur(16px)',
-                    border: '1px solid rgba(100,140,220,0.08)',
-                    boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+                    boxShadow: '0 4px 24px rgba(0,0,0,0.05)',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = cfg.glow.replace('0.3', '0.4');
-                    e.currentTarget.style.boxShadow = `0 0 30px ${cfg.glow}`;
+                    e.currentTarget.style.borderColor = cfg.color;
+                    e.currentTarget.style.boxShadow = `0 8px 30px ${cfg.glow}`;
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(100,140,220,0.08)';
-                    e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.15)';
+                    e.currentTarget.style.borderColor = '';
+                    e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.05)';
                   }}
                 >
                   {/* Top glow line */}
@@ -609,12 +588,7 @@ export default function Vitals() {
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             <Card
-              className="h-full"
-              style={{
-                background: 'rgba(15,20,35,0.5)',
-                backdropFilter: 'blur(16px)',
-                border: '1px solid rgba(100,140,220,0.08)',
-              }}
+              className="h-full bg-card/60 backdrop-blur-xl border-border shadow-sm dark:bg-slate-900/40"
             >
               <CardHeader>
                 <CardTitle className="text-lg font-heading text-foreground flex items-center gap-2">
@@ -636,12 +610,7 @@ export default function Vitals() {
             className="lg:col-span-2"
           >
             <Card
-              className="h-full"
-              style={{
-                background: 'rgba(15,20,35,0.5)',
-                backdropFilter: 'blur(16px)',
-                border: '1px solid rgba(100,140,220,0.08)',
-              }}
+              className="h-full bg-card/60 backdrop-blur-xl border-border shadow-sm dark:bg-slate-900/40"
             >
               <CardHeader>
                 <CardTitle className="text-lg font-heading text-foreground flex items-center gap-2">
@@ -691,11 +660,7 @@ export default function Vitals() {
             transition={{ duration: 0.6, delay: 0.4 }}
           >
             <Card
-              style={{
-                background: 'rgba(15,20,35,0.5)',
-                backdropFilter: 'blur(16px)',
-                border: '1px solid rgba(100,140,220,0.08)',
-              }}
+              className="bg-card/60 backdrop-blur-xl border-border shadow-sm dark:bg-slate-900/40"
             >
               <CardHeader>
                 <CardTitle className="text-lg font-heading text-foreground flex items-center gap-2">
@@ -813,11 +778,7 @@ export default function Vitals() {
           transition={{ duration: 0.6, delay: 0.5 }}
         >
           <Card
-            style={{
-              background: 'rgba(15,20,35,0.5)',
-              backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(100,140,220,0.08)',
-            }}
+            className="bg-card/60 backdrop-blur-xl border-border shadow-sm dark:bg-slate-900/40"
           >
             <CardHeader>
               <CardTitle className="text-lg font-heading text-foreground flex items-center gap-2">
@@ -849,8 +810,7 @@ export default function Vitals() {
                           <Bluetooth className="h-3 w-3 text-blue-400" />
                         </div>
                         <div
-                          className="flex-1 p-3 rounded-xl"
-                          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(100,140,220,0.05)' }}
+                          className="flex-1 p-3 rounded-xl bg-card/60 backdrop-blur-md border border-border shadow-sm"
                         >
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-xs font-semibold text-foreground/70">{reading.deviceName}</span>
@@ -901,8 +861,7 @@ export default function Vitals() {
                           <Plus className="h-3 w-3 text-purple-400" />
                         </div>
                         <div
-                          className="flex-1 p-3 rounded-xl group"
-                          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(100,140,220,0.05)' }}
+                          className="flex-1 p-3 rounded-xl group bg-card/60 backdrop-blur-md border border-border shadow-sm"
                         >
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-xs font-semibold text-foreground/70">Manual Entry</span>
