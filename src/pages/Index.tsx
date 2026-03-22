@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useRef } from 'react';
 import { ParticleGalaxy } from '@/components/ParticleGalaxy';
+import { Footer } from '@/components/Footer';
 
 const fadeIn = {
   hidden: { opacity: 0, y: 24 },
@@ -264,19 +265,7 @@ export default function Index() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 relative z-10" style={{ borderTop: '1px solid rgba(58,141,255,0.06)', background: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(10px)' }}>
-        <div className="container flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden shadow-sm">
-              <img src="/logo.png" alt="Diagnyx Logo" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-            </div>
-            <span className="font-heading font-bold gradient-text">Diagnyx AI</span>
-          </div>
-          <p className="text-sm" style={{ color: '#9CA3AF' }}>
-            © 2025 Diagnyx AI. Your health, simplified.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </motion.div>
   );
 }
