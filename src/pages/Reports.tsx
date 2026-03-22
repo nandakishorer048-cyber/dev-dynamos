@@ -208,10 +208,16 @@ export default function Reports() {
 
       if (error) {
         console.error("Supabase edge function error:", error);
+        // Try to extract the real error message from the response body
         let msg = error.message || "Unknown error";
-        if (msg.includes('non-2xx') || error.name === 'FunctionsHttpError') {
-          msg = "All AI visual models are currently busy or rate-limited on the free tier. Please try the 'Paste Text' option instead!";
-        }
+        try {
+          // FunctionsHttpError carries the server response — parse it for the real reason
+          const context = (error as any).context;
+          if (context) {
+            const body = await context.json?.();
+            if (body?.error) msg = body.error;
+          }
+        } catch (_) { /* ignore parse errors */ }
         throw new Error(msg);
       }
 

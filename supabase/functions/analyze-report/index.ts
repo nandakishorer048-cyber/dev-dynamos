@@ -42,7 +42,13 @@ serve(async (req) => {
 
     const { reportText, reportType, language, imageData, mimeType } = validation.data;
     const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
-    if (!OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY is not configured');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+
+    console.log('API keys present:', { hasOpenRouter: !!OPENROUTER_API_KEY, hasGemini: !!GEMINI_API_KEY });
+
+    if (!OPENROUTER_API_KEY && !GEMINI_API_KEY) {
+      throw new Error('No AI API keys configured');
+    }
 
     const languageNames: Record<string, string> = { en: 'English', es: 'Spanish', fr: 'French', de: 'German', hi: 'Hindi', pt: 'Portuguese', ar: 'Arabic', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' };
     const targetLanguage = languageNames[language] || 'English';
@@ -78,71 +84,113 @@ Return ONLY a valid JSON object (no markdown, no code fences) with all text valu
   "questionsForDoctor": ["Questions"]
 }`;
 
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-
-    let response;
+    let response: Response | undefined;
     let lastError = "";
-    
-    // If it's an image analysis, route directly to Google's official Gemini API (which has a generous free tier for images)
+
+    // --- IMAGE ANALYSIS via Gemini ---
     if (isImageAnalysis && imageData && GEMINI_API_KEY) {
-      console.log('Routing image analysis directly to Gemini API');
+      console.log('Routing image analysis to Gemini API');
       const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
       const imageMimeType = mimeType || 'image/jpeg';
-      
-      try {
-        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            system_instruction: {
-              parts: { text: systemPrompt }
-            },
-            contents: [
-              {
-                role: "user", 
-                parts: [
-                  { text: `Please analyze this ${reportType || 'medical'} report document and extract all relevant information.` },
-                  { 
-                    inlineData: {
-                      mimeType: imageMimeType,
-                      data: base64Data
-                    }
+
+      // Try gemini-1.5-flash first (very reliable for vision), then gemini-2.0-flash
+      const geminiModels = ['gemini-1.5-flash', 'gemini-2.0-flash'];
+
+      for (const model of geminiModels) {
+        console.log(`Trying Gemini model: ${model}`);
+        try {
+          const geminiResponse = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                systemInstruction: {
+                  parts: [{ text: systemPrompt }]
+                },
+                contents: [
+                  {
+                    role: "user",
+                    parts: [
+                      { text: `Please analyze this ${reportType || 'medical'} report document and extract all relevant information. Return ONLY valid JSON as instructed.` },
+                      {
+                        inlineData: {
+                          mimeType: imageMimeType,
+                          data: base64Data
+                        }
+                      }
+                    ]
                   }
-                ]
-              }
-            ],
-            generationConfig: {
-              responseMimeType: "application/json"
+                ],
+                generationConfig: {
+                  temperature: 0.3,
+                  maxOutputTokens: 2048,
+                }
+              })
             }
-          })
-        });
+          );
 
-        if (!response.ok) {
-          lastError = await response.text();
-          console.error("Gemini API error:", response.status, lastError);
-        } else {
-          console.log("Successfully connected to Gemini direct API");
+          if (geminiResponse.ok) {
+            console.log(`Gemini ${model} succeeded`);
+            response = geminiResponse;
+            break;
+          } else {
+            const errText = await geminiResponse.text();
+            lastError = `Gemini ${model}: ${geminiResponse.status} - ${errText}`;
+            console.error(lastError);
+          }
+        } catch (err: any) {
+          lastError = `Gemini ${model} fetch error: ${err.message}`;
+          console.error(lastError);
         }
-      } catch (err: any) {
-        console.error("Gemini API fetch failed:", err);
-        lastError = err.message;
       }
-    } else {
-      // Build OpenRouter content parts for TEXT ONLY
-      const userContent = `${systemPrompt}\n\nPlease analyze this ${reportType || 'medical'} report:\n\n${reportText}`;
-      
-      const models = [
-        "google/gemini-2.0-flash-lite-preview-02-05:free",
-        "google/gemma-3-27b-it:free",
-        "openrouter/free"
-      ];
 
-      for (const model of models) {
-        console.log(`Trying model: ${model} for text analysis`);
+      // If Gemini fails but OpenRouter is available, fall back to a text-based description
+      if ((!response || !response.ok) && OPENROUTER_API_KEY) {
+        console.log('Gemini failed, falling back to OpenRouter for image analysis');
+        const fallbackPrompt = `${systemPrompt}\n\nNote: The user uploaded an image of a ${reportType || 'medical'} report but the image analyzer is unavailable. Please provide a general helpful response about what to look for in a ${reportType || 'medical'} report, and advise them to consult their doctor. Return valid JSON.`;
+        
         try {
           response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: 'POST',
-            headers: { 
+            headers: {
+              'Content-Type': 'application/json',
+              "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+              "HTTP-Referer": "https://healthronix.com",
+              "X-Title": "Healthronix App"
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.0-flash-lite-preview-02-05:free",
+              messages: [{ role: 'user', content: fallbackPrompt }]
+            }),
+          });
+          if (!response.ok) {
+            lastError = `OpenRouter fallback failed: ${response.status}`;
+            console.error(lastError);
+          }
+        } catch (err: any) {
+          lastError = `OpenRouter fallback error: ${err.message}`;
+          console.error(lastError);
+        }
+      }
+    } else {
+      // --- TEXT ANALYSIS via OpenRouter ---
+      if (!OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY is not configured');
+
+      const userContent = `${systemPrompt}\n\nPlease analyze this ${reportType || 'medical'} report:\n\n${reportText}`;
+
+      const models = [
+        "google/gemini-2.0-flash-lite-preview-02-05:free",
+        "google/gemma-3-27b-it:free",
+        "meta-llama/llama-3.1-8b-instruct:free",
+      ];
+
+      for (const model of models) {
+        console.log(`Trying OpenRouter model: ${model} for text analysis`);
+        try {
+          response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: 'POST',
+            headers: {
               'Content-Type': 'application/json',
               "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
               "HTTP-Referer": "https://healthronix.com",
@@ -155,8 +203,8 @@ Return ONLY a valid JSON object (no markdown, no code fences) with all text valu
           });
 
           if (response.ok) {
-            console.log(`Successfully connected to ${model}`);
-            break; // Success! Exit the loop
+            console.log(`OpenRouter model ${model} succeeded`);
+            break;
           } else {
             lastError = await response.text();
             console.error(`Error with ${model}:`, response.status, lastError);
@@ -169,20 +217,26 @@ Return ONLY a valid JSON object (no markdown, no code fences) with all text valu
     }
 
     if (!response || !response.ok) {
-      return new Response(JSON.stringify({ error: "All AI models are currently busy. Please try again later." }), { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      console.error('All AI models failed. Last error:', lastError);
+      return new Response(JSON.stringify({ error: `AI analysis failed. Please try again later. Details: ${lastError}` }), { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const data = await response.json();
     let content = "";
-    
+
     // Extract content based on which API was successful
-    if (data.choices && data.choices[0].message) {
+    if (data.choices && data.choices[0]?.message) {
       content = data.choices[0].message.content; // OpenRouter format
-    } else if (data.candidates && data.candidates[0].content) {
+    } else if (data.candidates && data.candidates[0]?.content) {
       content = data.candidates[0].content.parts[0].text; // Gemini direct format
     }
-    
-    if (!content) throw new Error('No AI response content');
+
+    console.log('Raw AI response content length:', content?.length);
+
+    if (!content) {
+      console.error('Empty AI response. Full data:', JSON.stringify(data));
+      throw new Error('No AI response content');
+    }
 
     let analysis;
     try {
@@ -195,7 +249,8 @@ Return ONLY a valid JSON object (no markdown, no code fences) with all text valu
     console.log('Analysis completed successfully');
     return new Response(JSON.stringify({ analysis }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error: unknown) {
-    console.error('Error analyzing report:', error);
-    return new Response(JSON.stringify({ error: 'An error occurred processing your request' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('Error analyzing report:', msg);
+    return new Response(JSON.stringify({ error: `An error occurred: ${msg}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
