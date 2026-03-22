@@ -86,6 +86,7 @@ Return ONLY a valid JSON object (no markdown, no code fences) with all text valu
 
     let response: Response | undefined;
     let lastError = "";
+    let geminiError = "";
 
     // --- IMAGE ANALYSIS via Gemini ---
     if (isImageAnalysis && imageData && GEMINI_API_KEY) {
@@ -136,43 +137,75 @@ Return ONLY a valid JSON object (no markdown, no code fences) with all text valu
             break;
           } else {
             const errText = await geminiResponse.text();
-            lastError = `Gemini ${model}: ${geminiResponse.status} - ${errText}`;
+            geminiError = `Gemini ${model} (${geminiResponse.status}): ${errText}`;
+            lastError = geminiError;
             console.error(lastError);
           }
         } catch (err: any) {
-          lastError = `Gemini ${model} fetch error: ${err.message}`;
+          geminiError = `Gemini ${model} network error: ${err.message}`;
+          lastError = geminiError;
           console.error(lastError);
         }
       }
 
-      // If Gemini fails but OpenRouter is available, fall back to a text-based description
+      // If Gemini fails, fall back to OpenRouter VISION models that can also read images
       if ((!response || !response.ok) && OPENROUTER_API_KEY) {
-        console.log('Gemini failed, falling back to OpenRouter for image analysis');
-        const fallbackPrompt = `${systemPrompt}\n\nNote: The user uploaded an image of a ${reportType || 'medical'} report but the image analyzer is unavailable. Please provide a general helpful response about what to look for in a ${reportType || 'medical'} report, and advise them to consult their doctor. Return valid JSON.`;
-        
-        try {
-          response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-              "HTTP-Referer": "https://healthronix.com",
-              "X-Title": "Healthronix App"
-            },
-            body: JSON.stringify({
-              model: "google/gemini-2.0-flash-lite-preview-02-05:free",
-              messages: [{ role: 'user', content: fallbackPrompt }]
-            }),
-          });
-          if (!response.ok) {
-            lastError = `OpenRouter fallback failed: ${response.status}`;
+        console.log('Gemini failed, falling back to OpenRouter vision models');
+        const base64Data = imageData!.includes(',') ? imageData!.split(',')[1] : imageData!;
+        const imageMimeType = mimeType || 'image/jpeg';
+        const imageUrl = `data:${imageMimeType};base64,${base64Data}`;
+
+        // Vision-capable free models on OpenRouter
+        const visionModels = [
+          "google/gemini-2.0-flash-lite-preview-02-05:free",
+          "meta-llama/llama-3.2-11b-vision-instruct:free"
+        ];
+
+        for (const visionModel of visionModels) {
+          try {
+            console.log(`Trying OpenRouter vision model: ${visionModel}`);
+            response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                "HTTP-Referer": "https://healthronix.com",
+                "X-Title": "Healthronix App"
+              },
+              body: JSON.stringify({
+                model: visionModel,
+                messages: [
+                  {
+                    role: 'user',
+                    content: [
+                      {
+                        type: 'text',
+                        text: `${systemPrompt}\n\nPlease analyze this ${reportType || 'medical'} report image and extract all relevant information. Return ONLY valid JSON as instructed.`
+                      },
+                      {
+                        type: 'image_url',
+                        image_url: { url: imageUrl }
+                      }
+                    ]
+                  }
+                ]
+              }),
+            });
+            if (response.ok) {
+              console.log(`OpenRouter vision model ${visionModel} succeeded`);
+              break;
+            } else {
+              const errBody = await response.text();
+              lastError = `OpenRouter ${visionModel} failed: ${response.status} - ${errBody}`;
+              console.error(lastError);
+            }
+          } catch (err: any) {
+            lastError = `OpenRouter ${visionModel} error: ${err.message}`;
             console.error(lastError);
           }
-        } catch (err: any) {
-          lastError = `OpenRouter fallback error: ${err.message}`;
-          console.error(lastError);
         }
       }
+
     } else {
       // --- TEXT ANALYSIS via OpenRouter ---
       if (!OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY is not configured');
@@ -217,8 +250,14 @@ Return ONLY a valid JSON object (no markdown, no code fences) with all text valu
     }
 
     if (!response || !response.ok) {
-      console.error('All AI models failed. Last error:', lastError);
-      return new Response(JSON.stringify({ error: `AI analysis failed. Please try again later. Details: ${lastError}` }), { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const errorDetails = geminiError
+        ? `Gemini image analysis failed: ${geminiError}. Fallback also failed: ${lastError}`
+        : lastError;
+      console.error('All AI models failed:', errorDetails);
+      return new Response(
+        JSON.stringify({ error: `AI analysis failed. Details: ${errorDetails}` }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const data = await response.json();
