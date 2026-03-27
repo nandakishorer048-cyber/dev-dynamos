@@ -124,7 +124,7 @@ export function PatientChatbot() {
         ...prev,
         {
           role: 'assistant',
-          content: "I'm sorry, I encountered an issue. Please try again in a moment.",
+          content: `I'm sorry, I encountered an issue. Error: ${error instanceof Error ? error.message : JSON.stringify(error)}`,
         },
       ]);
     } finally {
@@ -156,8 +156,8 @@ export function PatientChatbot() {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-40 right-6 z-50 w-[380px] max-w-[calc(100vw-3rem)] animate-in slide-in-from-bottom-4 duration-300">
-          <div className="flex flex-col h-[500px] max-h-[70vh] rounded-2xl border bg-background shadow-2xl overflow-hidden">
+        <div className="fixed bottom-40 right-6 z-50 w-[450px] max-w-[calc(100vw-3rem)] animate-in slide-in-from-bottom-4 duration-300">
+          <div className="flex flex-col h-[600px] max-h-[80vh] rounded-2xl border bg-background shadow-2xl overflow-hidden">
             {/* Header */}
             <div className="flex items-center gap-3 border-b bg-primary p-4 text-primary-foreground">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-foreground/20">

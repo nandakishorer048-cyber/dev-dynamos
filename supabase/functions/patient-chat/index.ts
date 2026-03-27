@@ -43,7 +43,8 @@ serve(async (req) => {
 
     const { messages } = validation.data;
     const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
-    if (!OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is not configured");
+    // We allow running if AT LEAST ONE key is configured.
+    if (!OPENROUTER_API_KEY && !Deno.env.get("KIMI_API_KEY")) throw new Error("No AI API key is configured");
 
     console.log("Processing patient chat request with", messages.length, "messages");
 
@@ -77,10 +78,10 @@ Remember: You're here to support and educate, not to replace professional medica
     ];
 
     const models = [
-      "google/gemini-2.0-flash-lite-preview-02-05:free",
-      "meta-llama/llama-3.3-70b-instruct:free",
+      "google/gemini-2.0-flash-lite-001",
       "google/gemma-3-27b-it:free",
-      "openrouter/free"
+      "meta-llama/llama-3.3-70b-instruct:free",
+      "openrouter/auto"
     ];
 
     let response;
@@ -117,8 +118,40 @@ Remember: You're here to support and educate, not to replace professional medica
       }
     }
 
+    // Fallback to NVIDIA NIM (KIMI) if OpenRouter fails entirely (e.g., 401 invalid key)
+    const KIMI_API_KEY = Deno.env.get("KIMI_API_KEY");
+    if ((!response || !response.ok) && KIMI_API_KEY) {
+      console.log(`OpenRouter failed. Trying NVIDIA NIM Fallback (Llama 3.1)`);
+      try {
+        response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${KIMI_API_KEY}`,
+            "Accept": "text/event-stream"
+          },
+          body: JSON.stringify({
+            model: "meta/llama-3.1-70b-instruct",
+            messages: openRouterMessages,
+            stream: true,
+            temperature: 0.5,
+            max_tokens: 1024
+          }),
+        });
+        if (response.ok) {
+          console.log('Successfully connected to NVIDIA NIM');
+        } else {
+          lastError = await response.text();
+          console.error('Error with NVIDIA NIM:', response.status, lastError);
+        }
+      } catch (err: any) {
+        console.error('Fetch failed for NVIDIA NIM:', err);
+        lastError = err.message;
+      }
+    }
+
     if (!response || !response.ok) {
-      return new Response(JSON.stringify({ error: "All AI models are currently busy. Please try again later." }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "All AI models are currently busy. Please try again later.", details: lastError }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     console.log("Streaming response from AI gateway");
