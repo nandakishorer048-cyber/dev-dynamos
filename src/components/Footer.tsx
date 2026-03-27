@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Linkedin } from 'lucide-react';
+import { Mail, Linkedin, Instagram } from 'lucide-react';
 
 export function Footer() {
   return (
@@ -45,6 +45,10 @@ export function Footer() {
               <a href="https://www.linkedin.com/in/nanda-kishore-800b03383?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-slate-400 hover:text-blue-400 transition-colors group w-fit">
                 <Linkedin className="w-4 h-4 group-hover:scale-110 transition-transform" />
                 <span className="text-sm">Connect on LinkedIn</span>
+              </a>
+              <a href="https://www.instagram.com/diagnyx.ai/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-slate-400 hover:text-blue-400 transition-colors group w-fit">
+                <Instagram className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                <span className="text-sm">Connect on Instagram</span>
               </a>
             </div>
           </div>
