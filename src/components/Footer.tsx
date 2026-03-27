@@ -75,12 +75,7 @@ export function Footer() {
           </p>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-center md:justify-between text-sm text-slate-500">
-          <p className="text-center md:text-left w-full">
-            &copy; 2026 Diagnyx AI Solutions Pvt Ltd. All rights reserved.
-          </p>
-        </div>
+
       </motion.div>
     </footer>
   );
