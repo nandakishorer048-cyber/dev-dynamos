@@ -251,7 +251,7 @@ export function PatientChatbot() {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-40 right-6 z-50 w-[450px] max-w-[calc(100vw-3rem)] animate-in slide-in-from-bottom-4 duration-300">
+        <div className="fixed bottom-40 right-6 z-50 w-[500px] max-w-[calc(100vw-3rem)] animate-in slide-in-from-bottom-4 duration-300">
           <div className="flex flex-col h-[600px] max-h-[80vh] rounded-2xl border bg-background shadow-2xl overflow-hidden relative">
             
             {/* Sidebar Overlay */}
