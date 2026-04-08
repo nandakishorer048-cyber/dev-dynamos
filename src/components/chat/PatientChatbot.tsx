@@ -36,7 +36,7 @@ export function PatientChatbot() {
       title: 'New Chat',
       messages: [{
         role: 'assistant',
-        content: "Hello! I'm Diagnyx AI, your health assistant. I'm here to help you understand your health concerns, answer questions about symptoms, and provide general health information. How can I help you today?",
+        content: "Hello! I'm Diagnyx AI, your health assistant. I'm here to help you understand your health reports, answer general health information, and provide support. How can I help you today?",
       }],
       createdAt: Date.now(),
     };
