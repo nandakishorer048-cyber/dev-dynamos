@@ -113,8 +113,8 @@ export default function Index() {
           className="max-w-7xl mx-auto flex h-16 items-center justify-between px-6 rounded-3xl border border-white/20 bg-white/40 backdrop-blur-2xl shadow-xl shadow-slate-900/5 pointer-events-auto"
         >
           <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center p-1 shadow-lg shadow-primary/20">
-                <img src="/logo.png" alt="Diagnyx" className="w-full h-full object-contain brightness-0 invert" />
+             <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-primary/20 border border-slate-100">
+                <img src="/logo.png" alt="Diagnyx" className="w-full h-full object-cover" />
              </div>
              <span className="text-xl font-bold font-heading tracking-tight text-slate-900">Diagnyx AI</span>
           </div>
