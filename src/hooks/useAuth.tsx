@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { ApplicationStatus } from '@/types/earlyAccess';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  applicationStatus: ApplicationStatus | null;
+  isAdmin: boolean;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null; session: Session | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null; session: Session | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
@@ -18,13 +21,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [applicationStatus, setApplicationStatus] = useState<ApplicationStatus | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
-  // Track whether we're processing an OAuth callback (tokens in URL hash)
+  // Track whether we me processing an OAuth callback (tokens in URL hash)
   const isOAuthCallback = useRef(
     typeof window !== 'undefined' && window.location.hash.includes('access_token')
   );
 
   const hasRecoveredSessionRef = useRef(false);
+
+  const checkUserStatus = async (currentUser: User | null) => {
+    if (!currentUser) {
+      setApplicationStatus(null);
+      setIsAdmin(false);
+      return;
+    }
+
+    try {
+      // 1. Check admin status
+      const { data: adminData } = await supabase
+        .from('admin_roles')
+        .select('id')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+
+      if (adminData) {
+        setIsAdmin(true);
+        setApplicationStatus('approved');
+        return;
+      }
+
+      setIsAdmin(false);
+
+      // 2. Check early access application status
+      const { data: appData } = await supabase
+        .from('early_access_applications')
+        .select('status')
+        .or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
+        .maybeSingle();
+
+      if (appData) {
+        setApplicationStatus(appData.status as ApplicationStatus);
+      } else {
+        setApplicationStatus(null);
+      }
+    } catch (err) {
+      console.error('Error checking user status:', err);
+    }
+  };
 
   const isSessionRefreshTokenValid = (session: Session | null) => {
     const refreshToken = session?.refresh_token;
@@ -123,7 +168,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!isMounted) return;
 
       setSession(nextSession);
-      setUser(nextSession?.user ?? null);
+      const currentUser = nextSession?.user ?? null;
+      setUser(currentUser);
+      void checkUserStatus(currentUser);
       setLoading(false);
 
       // If this was an OAuth callback and we got a session, clean up the hash
@@ -166,7 +213,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!isMounted) return;
         setSession(session);
-        setUser(session?.user ?? null);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        void checkUserStatus(currentUser);
         startAutoRefreshSafely(session);
       } catch {
         await clearCorruptedSession();
@@ -280,10 +329,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut({ scope: 'local' });
+    setApplicationStatus(null);
+    setIsAdmin(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signInWithGoogle, signOut }}>
+    <AuthContext.Provider
+      value={{ user, session, loading, applicationStatus, isAdmin, signUp, signIn, signInWithGoogle, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   );
