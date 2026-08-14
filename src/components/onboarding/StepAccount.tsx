@@ -80,10 +80,10 @@ export function StepAccount({
           Final Step
         </div>
         <h2 className="text-3xl font-heading font-extrabold text-slate-900">
-          Create Your Early Access Account
+          Create Your Account
         </h2>
         <p className="text-slate-500 text-sm sm:text-base">
-          Fill in your details to finalize your application.
+          Fill in your details to get instant access.
         </p>
       </div>
 
@@ -232,11 +232,11 @@ export function StepAccount({
             {loading ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Submitting Request...</span>
+                <span>Creating Account...</span>
               </>
             ) : (
               <>
-                <span>Request Early Access</span>
+                <span>Create Account</span>
                 <ArrowRight className="h-5 w-5" />
               </>
             )}

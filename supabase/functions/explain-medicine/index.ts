@@ -83,10 +83,10 @@ Dosage: ${dosage || 'Not specified'}
 Prescribed for: ${purpose || 'General use'}`;
 
     const models = [
-      "google/gemini-2.0-flash-lite-preview-02-05:free",
-      "meta-llama/llama-3.3-70b-instruct:free",
-      "google/gemma-3-27b-it:free",
-      "openrouter/free"
+      "openai/gpt-4o-mini",
+      "meta-llama/llama-3.3-70b-instruct",
+      "qwen/qwen-2.5-72b-instruct",
+      "openrouter/auto"
     ];
 
     let response;
@@ -118,6 +118,36 @@ Prescribed for: ${purpose || 'General use'}`;
         }
       } catch (err: any) {
         console.error(`Fetch failed for ${model}:`, err);
+        lastError = err.message;
+      }
+    }
+
+    const KIMI_API_KEY = Deno.env.get("KIMI_API_KEY");
+    if ((!response || !response.ok) && KIMI_API_KEY) {
+      console.log('OpenRouter failed. Trying NVIDIA NIM Fallback (Llama 3.1 70B)');
+      try {
+        response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${KIMI_API_KEY}`,
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({
+            model: "meta/llama-3.1-70b-instruct",
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.3,
+            max_tokens: 2048
+          }),
+        });
+        if (response.ok) {
+          console.log('Successfully connected to NVIDIA NIM');
+        } else {
+          lastError = await response.text();
+          console.error('Error with NVIDIA NIM:', response.status, lastError);
+        }
+      } catch (err: any) {
+        console.error('Fetch failed for NVIDIA NIM:', err);
         lastError = err.message;
       }
     }

@@ -130,7 +130,7 @@ export default function Index() {
               <Link to="/login">Sign In</Link>
             </Button>
             <Button className="bg-slate-900 text-white rounded-2xl px-6 font-bold hover:bg-slate-800 shadow-xl shadow-slate-900/10" asChild>
-              <Link to="/onboarding">Request Early Access</Link>
+              <Link to="/onboarding">Get Started</Link>
             </Button>
           </div>
         </div>
@@ -150,7 +150,7 @@ export default function Index() {
               className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-[0.2em] mb-8 bg-blue-50 text-primary border border-blue-100 shadow-sm"
             >
               <Sparkles className="h-3.5 w-3.5" />
-              Private Beta Now Open
+              AI-Powered Health Assistant
             </motion.div>
 
             <motion.h1 
@@ -176,13 +176,13 @@ export default function Index() {
             <motion.div variants={fadeIn} className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                <Button size="lg" className="h-16 px-10 text-lg font-black rounded-[20px] bg-primary hover:bg-blue-600 shadow-2xl shadow-primary/20 gap-3 group" asChild>
                   <Link to="/onboarding">
-                     Request Early Access
+                     Get Started Free
                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </Link>
                </Button>
                <Button size="lg" variant="outline" className="h-16 px-10 text-lg font-black rounded-[20px] border-2 border-slate-900 text-slate-900 hover:bg-slate-50 gap-3" asChild>
                   <Link to="/login">
-                     Approved User Sign In
+                     Sign In
                   </Link>
                </Button>
             </motion.div>
@@ -231,7 +231,7 @@ export default function Index() {
                 <p className="text-slate-500 font-medium leading-relaxed mb-6">{feature.description}</p>
                 
                 <Link to="/onboarding" className="inline-flex items-center gap-2 text-sm font-black text-primary group/link">
-                   Request Early Access
+                   Get Started
                    <ChevronRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
                 </Link>
                 
@@ -295,19 +295,19 @@ export default function Index() {
             
             <div className="relative z-10 space-y-10">
                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white/80 text-[10px] uppercase font-black tracking-widest border border-white/5">
-                  Private Beta
+                  Diagnyx AI
                </div>
                <h2 className="text-5xl md:text-8xl font-heading font-black text-white tracking-tighter leading-[0.9]">
                   Take control of <br />
                   <span className="text-primary italic">your health today.</span>
                </h2>
                <p className="text-xl text-slate-400 font-medium max-w-xl mx-auto">
-                  Join Diagnyx Private Beta and experience the clarity of clinical AI in the palm of your hand.
+                  Join Diagnyx AI and experience the clarity of clinical AI in the palm of your hand.
                </p>
                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                  <Button size="lg" className="h-20 px-16 text-xl font-black rounded-3xl bg-primary hover:bg-blue-600 shadow-2xl shadow-primary/40 group gap-4" asChild>
                    <Link to="/onboarding">
-                     Request Early Access
+                     Create Free Account
                      <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                    </Link>
                  </Button>

@@ -78,9 +78,9 @@ Remember: You're here to support and educate, not to replace professional medica
     ];
 
     const models = [
-      "google/gemini-2.0-flash-lite-001",
-      "google/gemma-3-27b-it:free",
-      "meta-llama/llama-3.3-70b-instruct:free",
+      "openai/gpt-4o-mini",
+      "meta-llama/llama-3.3-70b-instruct",
+      "qwen/qwen-2.5-72b-instruct",
       "openrouter/auto"
     ];
 

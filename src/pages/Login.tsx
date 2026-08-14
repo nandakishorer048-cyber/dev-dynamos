@@ -1,130 +1,145 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { ParticleGalaxy } from '@/components/ParticleGalaxy';
 import { motion } from 'framer-motion';
-import { ArrowRight, Lock, Clock, XCircle, Home, Mail, Sparkles, Loader2 } from 'lucide-react';
+import { ArrowRight, Sparkles, Loader2, UserPlus, LogIn } from 'lucide-react';
 import { z } from 'zod';
-import { ApplicationStatus } from '@/types/earlyAccess';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
 
 export default function Login() {
+  const location = useLocation();
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  
-  // Status modal state if login is blocked
-  const [loginStatusModal, setLoginStatusModal] = useState<ApplicationStatus | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { signIn, signOut } = useAuth();
+  const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (location.state?.email) {
+      setEmail(location.state.email);
+    }
+  }, [location.state]);
+
   const validateForm = () => {
-    const newErrors: { email?: string; password?: string } = {};
+    const newErrors: Record<string, string> = {};
+    
+    if (mode === 'signup' && !fullName.trim()) {
+      newErrors.fullName = 'Full Name is required';
+    }
+
     const emailResult = emailSchema.safeParse(email);
     if (!emailResult.success) newErrors.email = emailResult.error.errors[0].message;
+
     const passwordResult = passwordSchema.safeParse(password);
     if (!passwordResult.success) newErrors.password = passwordResult.error.errors[0].message;
+
+    if (mode === 'signup' && password !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading || !validateForm()) return;
     setLoading(true);
-    setLoginStatusModal(null);
 
     try {
-      // 1. Attempt Supabase auth sign-in
-      const { error: signInError, session } = await signIn(email, password);
+      if (mode === 'signup') {
+        // --- SIGN UP ---
+        const { error: signUpErr, session } = await signUp(email, password, fullName);
 
-      if (signInError) {
+        if (signUpErr) {
+          const msg = signUpErr.message;
+          if (msg.includes('User already registered') || msg.includes('already registered')) {
+            // Attempt auto sign in with same password
+            const { error: signInErr, session: loginSession } = await signIn(email, password);
+            if (!signInErr && loginSession) {
+              toast({
+                title: 'Welcome back! 🎉',
+                description: 'Signed in to your existing account.',
+              });
+              navigate('/dashboard');
+              return;
+            }
+
+            toast({
+              title: 'Account Already Exists',
+              description: 'An account with this email already exists. Switched to Sign In.',
+            });
+            setMode('signin');
+            setLoading(false);
+            return;
+          }
+
+          toast({
+            title: 'Sign Up Failed',
+            description: msg,
+            variant: 'destructive',
+          });
+          setLoading(false);
+          return;
+        }
+
         toast({
-          title: 'Sign in failed',
-          description: signInError.message.includes('Invalid login credentials')
-            ? 'Email or password is incorrect. Please try again.'
-            : signInError.message,
-          variant: 'destructive',
+          title: 'Account Created! 🎉',
+          description: 'Welcome to Diagnyx AI.',
         });
-        setLoading(false);
-        return;
-      }
-
-      if (!session || !session.user) {
-        setLoading(false);
-        return;
-      }
-
-      const userId = session.user.id;
-      const userEmail = session.user.email;
-
-      // 2. Check if user is an Admin
-      const { data: adminRow } = await supabase
-        .from('admin_roles')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (adminRow) {
-        // Admin user -> allow direct access
-        navigate('/admin');
-        return;
-      }
-
-      // 3. Check early_access_applications status
-      const { data: application } = await supabase
-        .from('early_access_applications')
-        .select('status')
-        .or(`user_id.eq.${userId},email.eq.${userEmail}`)
-        .maybeSingle();
-
-      if (!application) {
-        // No application found for this account -> sign out & prompt to apply
-        await signOut();
-        toast({
-          title: 'Early Access Required',
-          description: 'No Early Access application was found for this account. Please request Early Access first.',
-        });
-        navigate('/onboarding');
-        return;
-      }
-
-      if (application.status === 'pending') {
-        // BLOCK LOGIN
-        await signOut();
-        setLoginStatusModal('pending');
-        setLoading(false);
-        return;
-      }
-
-      if (application.status === 'rejected') {
-        // BLOCK LOGIN
-        await signOut();
-        setLoginStatusModal('rejected');
-        setLoading(false);
-        return;
-      }
-
-      if (application.status === 'approved') {
-        // ALLOW LOGIN
         navigate('/dashboard');
-        return;
+      } else {
+        // --- SIGN IN ---
+        const { error: signInErr, session } = await signIn(email, password);
+
+        if (signInErr) {
+          toast({
+            title: 'Sign in failed',
+            description: signInErr.message.includes('Invalid login credentials')
+              ? 'Email or password is incorrect. Please check your credentials.'
+              : signInErr.message,
+            variant: 'destructive',
+          });
+          setLoading(false);
+          return;
+        }
+
+        if (session?.user) {
+          // Check if admin
+          const { data: adminRow } = await supabase
+            .from('admin_roles')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+
+          if (adminRow) {
+            navigate('/admin');
+            return;
+          }
+
+          navigate('/dashboard');
+        }
       }
     } catch (err: any) {
-      console.error('Login error:', err);
+      console.error('Auth error:', err);
       toast({
-        title: 'Sign in error',
+        title: 'Authentication Error',
         description: err.message || 'An unexpected error occurred.',
         variant: 'destructive',
       });
@@ -156,21 +171,23 @@ export default function Login() {
 
         <div className="space-y-6 max-w-lg">
           <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-100">
-            <Sparkles className="h-3.5 w-3.5" /> Private Beta Access
+            <Sparkles className="h-3.5 w-3.5" /> Direct Access
           </div>
           <h1 className="text-4xl font-heading font-extrabold text-slate-900 leading-tight">
-            Welcome back to <br />
+            {mode === 'signin' ? 'Welcome back to' : 'Join'} <br />
             <span className="gradient-text">Diagnyx AI</span>
           </h1>
           <p className="text-base text-slate-600 leading-relaxed">
-            Approved members can sign in below to access AI-powered report analysis, vital tracking, and smart health tools.
+            {mode === 'signin'
+              ? 'Sign in to access AI-powered report analysis, vital tracking, and smart health tools.'
+              : 'Create your account to start understanding your medical reports with total clarity.'}
           </p>
         </div>
 
-        <p className="text-xs text-slate-400">© {new Date().getFullYear()} Diagnyx AI. Private Beta Release.</p>
+        <p className="text-xs text-slate-400">© {new Date().getFullYear()} Diagnyx AI. All rights reserved.</p>
       </div>
 
-      {/* Right Login / Status Form Panel */}
+      {/* Right Form Panel */}
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -188,151 +205,147 @@ export default function Login() {
             </Link>
           </div>
 
-          {/* Conditional Display: Pending Screen */}
-          {loginStatusModal === 'pending' && (
-            <Card className="border-0 shadow-2xl shadow-amber-500/10 rounded-3xl bg-white/90 backdrop-blur-2xl p-6 sm:p-8 text-center space-y-6">
-              <div className="w-16 h-16 rounded-2xl bg-amber-100/80 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto text-2xl shadow-inner">
-                ⏳
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-2xl font-heading font-extrabold text-slate-900">
-                  Application Under Review
-                </h2>
-                <p className="text-slate-600 text-sm leading-relaxed">
-                  Your application is currently under review by our team.
-                </p>
-              </div>
+          <Card className="border-0 shadow-2xl shadow-blue-500/10 rounded-3xl bg-white/90 backdrop-blur-2xl overflow-hidden border border-white">
+            <div className="h-1 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-teal-400" />
+            
+            <div className="p-6 pb-0">
+              <Tabs value={mode} onValueChange={(val) => setMode(val as 'signin' | 'signup')}>
+                <TabsList className="grid w-full grid-cols-2 bg-slate-100/80 p-1 rounded-xl">
+                  <TabsTrigger value="signin" className="rounded-lg font-bold text-xs gap-1.5">
+                    <LogIn className="h-3.5 w-3.5" />
+                    Sign In
+                  </TabsTrigger>
+                  <TabsTrigger value="signup" className="rounded-lg font-bold text-xs gap-1.5">
+                    <UserPlus className="h-3.5 w-3.5" />
+                    Sign Up
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
 
-              <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200/80 flex items-center justify-center gap-2 text-sm font-bold text-amber-800">
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
-                Status: 🟡 Pending
-              </div>
-
-              <p className="text-xs text-slate-500 leading-relaxed">
-                You will receive an email notification as soon as your account has been approved.
-              </p>
-
-              <div className="pt-2">
-                <Button
-                  onClick={() => setLoginStatusModal(null)}
-                  className="w-full h-12 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 gap-2"
-                >
-                  <Home className="h-4 w-4" />
-                  <span>Return Home</span>
-                </Button>
-              </div>
-            </Card>
-          )}
-
-          {/* Conditional Display: Rejected Screen */}
-          {loginStatusModal === 'rejected' && (
-            <Card className="border-0 shadow-2xl shadow-rose-500/10 rounded-3xl bg-white/90 backdrop-blur-2xl p-6 sm:p-8 text-center space-y-6">
-              <div className="w-16 h-16 rounded-2xl bg-rose-100/80 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto text-2xl shadow-inner">
-                <XCircle className="h-8 w-8 text-rose-600" />
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-2xl font-heading font-extrabold text-slate-900">
-                  Request Not Approved
-                </h2>
-                <p className="text-slate-600 text-sm leading-relaxed">
-                  Unfortunately your request has not been approved at this time.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-rose-50/80 border border-rose-200/80 text-xs text-rose-700 leading-relaxed">
-                If you believe this is an error or would like to provide additional details, please contact our support team.
-              </div>
-
-              <div className="pt-2 flex flex-col gap-2">
-                <Button
-                  onClick={() => setLoginStatusModal(null)}
-                  className="w-full h-12 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 gap-2"
-                >
-                  <Home className="h-4 w-4" />
-                  <span>Return Home</span>
-                </Button>
-              </div>
-            </Card>
-          )}
-
-          {/* Normal Login Card */}
-          {loginStatusModal === null && (
-            <Card className="border-0 shadow-2xl shadow-blue-500/10 rounded-3xl bg-white/90 backdrop-blur-2xl overflow-hidden border border-white">
-              <div className="h-1 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-teal-400" />
-              <CardHeader className="space-y-1 pb-4">
-                <CardTitle className="text-2xl font-heading font-extrabold text-slate-900">
-                  Sign In to Diagnyx AI
-                </CardTitle>
-                <CardDescription className="text-slate-500 text-sm">
-                  Access for approved early access users & admins
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSignIn} className="space-y-4">
+            <CardHeader className="space-y-1 pb-4 pt-4">
+              <CardTitle className="text-2xl font-heading font-extrabold text-slate-900">
+                {mode === 'signin' ? 'Sign In to Diagnyx AI' : 'Create Your Account'}
+              </CardTitle>
+              <CardDescription className="text-slate-500 text-sm">
+                {mode === 'signin'
+                  ? 'Access your account to start managing your health'
+                  : 'Get instant access to AI health tools and analysis'}
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {mode === 'signup' && (
                   <div className="space-y-1.5">
-                    <Label htmlFor="signin-email" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Email Address
+                    <Label htmlFor="fullname" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Full Name
                     </Label>
                     <Input
-                      id="signin-email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className={`${inputClassName} ${errors.email ? 'border-rose-400' : ''}`}
+                      id="fullname"
+                      type="text"
+                      placeholder="John Doe"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className={`${inputClassName} ${errors.fullName ? 'border-rose-400' : ''}`}
                     />
-                    {errors.email && <p className="text-xs text-rose-500">{errors.email}</p>}
+                    {errors.fullName && <p className="text-xs text-rose-500">{errors.fullName}</p>}
                   </div>
+                )}
 
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Email Address
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={`${inputClassName} ${errors.email ? 'border-rose-400' : ''}`}
+                  />
+                  {errors.email && <p className="text-xs text-rose-500">{errors.email}</p>}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="password" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Password
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={`${inputClassName} ${errors.password ? 'border-rose-400' : ''}`}
+                  />
+                  {errors.password && <p className="text-xs text-rose-500">{errors.password}</p>}
+                </div>
+
+                {mode === 'signup' && (
                   <div className="space-y-1.5">
-                    <div className="flex justify-between items-center">
-                      <Label htmlFor="signin-password" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                        Password
-                      </Label>
-                    </div>
+                    <Label htmlFor="confirmPassword" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Confirm Password
+                    </Label>
                     <Input
-                      id="signin-password"
+                      id="confirmPassword"
                       type="password"
                       placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className={`${inputClassName} ${errors.password ? 'border-rose-400' : ''}`}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className={`${inputClassName} ${errors.confirmPassword ? 'border-rose-400' : ''}`}
                     />
-                    {errors.password && <p className="text-xs text-rose-500">{errors.password}</p>}
+                    {errors.confirmPassword && <p className="text-xs text-rose-500">{errors.confirmPassword}</p>}
                   </div>
+                )}
 
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full h-12 text-base font-bold rounded-xl btn-glow text-white border-0 shadow-lg shadow-blue-500/20 gap-2"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        <span>Verifying...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Sign In</span>
-                        <ArrowRight className="h-4 w-4" />
-                      </>
-                    )}
-                  </Button>
-                </form>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-12 text-base font-bold rounded-xl btn-glow text-white border-0 shadow-lg shadow-blue-500/20 gap-2 mt-2"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>{mode === 'signin' ? 'Signing in...' : 'Creating Account...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{mode === 'signin' ? 'Sign In' : 'Create Account'}</span>
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              </form>
 
-                <div className="mt-6 pt-6 border-t border-slate-100 text-center space-y-2">
-                  <p className="text-xs text-slate-500">Don&apos;t have Early Access yet?</p>
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="w-full h-11 rounded-xl font-bold border-slate-200 text-blue-600 hover:bg-blue-50/50"
-                  >
-                    <Link to="/onboarding">Apply for Early Access</Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+              <div className="mt-6 pt-6 border-t border-slate-100 text-center">
+                {mode === 'signin' ? (
+                  <p className="text-xs text-slate-500">
+                    Don&apos;t have an account yet?{' '}
+                    <button
+                      type="button"
+                      onClick={() => setMode('signup')}
+                      className="font-bold text-blue-600 hover:underline"
+                    >
+                      Sign Up Now
+                    </button>
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    Already have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => setMode('signin')}
+                      className="font-bold text-blue-600 hover:underline"
+                    >
+                      Sign In Here
+                    </button>
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </motion.div>
       </div>
     </div>

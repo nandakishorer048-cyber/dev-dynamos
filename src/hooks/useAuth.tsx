@@ -48,26 +48,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (adminData) {
         setIsAdmin(true);
-        setApplicationStatus('approved');
-        return;
-      }
-
-      setIsAdmin(false);
-
-      // 2. Check early access application status
-      const { data: appData } = await supabase
-        .from('early_access_applications')
-        .select('status')
-        .or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
-        .maybeSingle();
-
-      if (appData) {
-        setApplicationStatus(appData.status as ApplicationStatus);
       } else {
-        setApplicationStatus(null);
+        setIsAdmin(false);
       }
+
+      // All authenticated users are approved directly
+      setApplicationStatus('approved');
     } catch (err) {
       console.error('Error checking user status:', err);
+      setApplicationStatus('approved');
     }
   };
 

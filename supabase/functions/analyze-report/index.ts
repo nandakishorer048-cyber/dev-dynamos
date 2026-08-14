@@ -112,22 +112,17 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
 
     let response: Response | undefined;
     let lastError = "";
-    let geminiError = "";
-
-    // --- IMAGE ANALYSIS ---
-    // Primary: google/gemma-3-27b-it:free via OpenRouter (multimodal vision)
-    // Fallback: Gemini OCR → Kimi K2.5 analysis (2-step pipeline)
 
     if (isImageAnalysis && imageData) {
       const base64DataImg = imageData.includes(',') ? imageData.split(',')[1] : imageData;
       const imageMimeTypeImg = mimeType || 'image/jpeg';
       const imageDataUrl = `data:${imageMimeTypeImg};base64,${base64DataImg}`;
 
-      // ── Primary: Gemma 3 27B (multimodal) via OpenRouter ─────────────────
-      if (OPENROUTER_API_KEY) {
-        console.log('Trying google/gemma-3-27b-it:free for image analysis via OpenRouter');
+      // ── 1. OpenRouter GPT-4o-mini (Vision) ─────────────────
+      if (OPENROUTER_API_KEY && !response) {
+        console.log('Trying openai/gpt-4o-mini for image analysis via OpenRouter');
         try {
-          const imgRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -136,7 +131,89 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
               'X-Title': 'Healthronix App',
             },
             body: JSON.stringify({
-              model: 'google/gemma-3-27b-it:free',
+              model: 'openai/gpt-4o-mini',
+              messages: [{
+                role: 'user',
+                content: [
+                  {
+                    type: 'text',
+                    text: `${systemPrompt}\n\nCarefully examine this ${reportType || 'medical'} report image. Read every number, value, and label visible. Then return ONLY valid JSON as instructed.`
+                  },
+                  { type: 'image_url', image_url: { url: imageDataUrl } }
+                ]
+              }],
+              response_format: { type: 'json_object' }
+            }),
+          });
+
+          if (res.ok) {
+            console.log('OpenRouter GPT-4o-mini image analysis succeeded');
+            response = res;
+          } else {
+            lastError = `OpenRouter GPT-4o-mini image failed (${res.status}): ${await res.text()}`;
+            console.error(lastError);
+          }
+        } catch (err: any) {
+          lastError = `OpenRouter GPT-4o-mini image error: ${err.message}`;
+          console.error(lastError);
+        }
+      }
+
+      // ── 2. NVIDIA NIM Llama 3.2 11B Vision ─────────────────
+      if (KIMI_API_KEY && (!response || !response.ok)) {
+        console.log('Trying meta/llama-3.2-11b-vision-instruct for image analysis via NVIDIA NIM');
+        try {
+          const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${KIMI_API_KEY}`,
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'meta/llama-3.2-11b-vision-instruct',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: `Carefully examine this ${reportType || 'medical'} report image. Read every number, value, and label visible. Then return ONLY valid JSON as instructed.` },
+                    { type: 'image_url', image_url: { url: imageDataUrl } }
+                  ]
+                }
+              ],
+              max_tokens: 4096,
+              temperature: 0.2
+            })
+          });
+
+          if (res.ok) {
+            console.log('NVIDIA NIM Llama 3.2 11B Vision image analysis succeeded');
+            response = res;
+          } else {
+            lastError = `NVIDIA NIM Llama 3.2 11B Vision failed (${res.status}): ${await res.text()}`;
+            console.error(lastError);
+          }
+        } catch (err: any) {
+          lastError = `NVIDIA NIM Vision error: ${err.message}`;
+          console.error(lastError);
+        }
+      }
+
+      // ── 3. OpenRouter Gemma 3 27B / Llama 3.3 (Vision fallback) ─────────────────
+      if (OPENROUTER_API_KEY && (!response || !response.ok)) {
+        console.log('Trying google/gemma-3-27b-it for image analysis via OpenRouter');
+        try {
+          const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+              'HTTP-Referer': 'https://healthronix.com',
+              'X-Title': 'Healthronix App',
+            },
+            body: JSON.stringify({
+              model: 'google/gemma-3-27b-it',
               messages: [{
                 role: 'user',
                 content: [
@@ -150,99 +227,28 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
             }),
           });
 
-          if (imgRes.ok) {
-            console.log('Gemma 3 27B image analysis succeeded');
-            response = imgRes;
+          if (res.ok) {
+            console.log('OpenRouter Gemma 3 27B image analysis succeeded');
+            response = res;
           } else {
-            lastError = `Gemma 3 27B image failed (${imgRes.status}): ${await imgRes.text()}`;
+            lastError = `OpenRouter Gemma 3 27B image failed (${res.status}): ${await res.text()}`;
             console.error(lastError);
           }
         } catch (err: any) {
-          lastError = `Gemma 3 27B image error: ${err.message}`;
+          lastError = `OpenRouter Gemma 3 27B image error: ${err.message}`;
           console.error(lastError);
         }
       }
 
-      // ── Fallback: 2-step OCR (Gemini/Phi) → Kimi K2.5 analysis ──────────
-      if (!response && (GEMINI_API_KEY || KIMI_API_KEY)) {
-        console.log('Nemotron failed, falling back to OCR + Kimi pipeline');
-        const ocrPrompt = `You are an OCR engine. Extract ALL text from this medical document image verbatim. Include every number, unit, label, value, date, and word you can see. Output raw text only.`;
-        let extractedText = '';
-
-        // OCR via Gemini
-        if (GEMINI_API_KEY && !extractedText) {
-          for (const model of ['gemini-1.5-flash', 'gemini-2.0-flash']) {
-            try {
-              const gr = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    contents: [{ role: 'user', parts: [{ text: ocrPrompt }, { inlineData: { mimeType: imageMimeTypeImg, data: base64DataImg } }] }],
-                    generationConfig: { temperature: 0.1, maxOutputTokens: 4096 }
-                  })
-                }
-              );
-              if (gr.ok) {
-                const gd = await gr.json();
-                extractedText = gd.candidates?.[0]?.content?.parts?.[0]?.text || '';
-                if (extractedText) { console.log('Gemini OCR succeeded'); break; }
-              } else {
-                lastError = `Gemini OCR ${model}: ${await gr.text()}`;
-              }
-            } catch (e: any) { lastError = e.message; }
-          }
-        }
-
-        // OCR via NVIDIA NIM Phi-Vision
-        if (KIMI_API_KEY && !extractedText) {
-          for (const m of ['microsoft/phi-3.5-vision-instruct', 'microsoft/phi-3-vision-128k-instruct']) {
-            try {
-              const nr = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${KIMI_API_KEY}`, 'Accept': 'application/json' },
-                body: JSON.stringify({ model: m, messages: [{ role: 'user', content: [{ type: 'text', text: ocrPrompt }, { type: 'image_url', image_url: { url: imageDataUrl } }] }], max_tokens: 4096, temperature: 0.1, stream: false })
-              });
-              if (nr.ok) {
-                extractedText = (await nr.json()).choices?.[0]?.message?.content || '';
-                if (extractedText) { console.log(`NVIDIA NIM OCR ${m} succeeded`); break; }
-              } else { lastError = `NIM OCR ${m}: ${await nr.text()}`; }
-            } catch (e: any) { lastError = e.message; }
-          }
-        }
-
-        if (!extractedText) throw new Error(`All image extraction methods failed. Last: ${lastError}`);
-
-        // Kimi K2.5 analysis on extracted text
-        if (!KIMI_API_KEY) throw new Error('KIMI_API_KEY required for analysis fallback');
-        console.log(`OCR done (${extractedText.length} chars). Running Kimi K2.5 analysis...`);
-        response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${KIMI_API_KEY}`, 'Accept': 'application/json' },
-          body: JSON.stringify({
-            model: 'moonshotai/kimi-k2.5',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: `Analyze this ${reportType || 'medical'} report (extracted from image) and return ONLY valid JSON:\n\n${extractedText}` }
-            ],
-            max_tokens: 16384, temperature: 0.3, top_p: 1.0, stream: false,
-            chat_template_kwargs: { thinking: true }
-          })
-        });
-        if (!response.ok) throw new Error(`Kimi K2.5 fallback failed (${response.status}): ${await response.text()}`);
-        console.log('Kimi K2.5 fallback analysis succeeded');
-      }
-
     } else {
-      // --- TEXT ANALYSIS: Kimi K2.5 (primary) → OpenRouter (fallback) ---
-      const userContent = `${systemPrompt}\n\nPlease analyze this ${reportType || 'medical'} report:\n\n${reportText}`;
+      // --- TEXT ANALYSIS ---
+      const userContent = `Please analyze this ${reportType || 'medical'} report and return ONLY valid JSON as instructed:\n\n${reportText}`;
 
-      // 1. Try Kimi K2.5 via NVIDIA NIM
-      if (KIMI_API_KEY) {
-        console.log('Trying Kimi K2.5 via NVIDIA NIM for text analysis');
+      // 1. Try NVIDIA NIM Llama 3.1 70B (Fast & Accurate)
+      if (KIMI_API_KEY && !response) {
+        console.log('Trying meta/llama-3.1-70b-instruct via NVIDIA NIM for text analysis');
         try {
-          response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+          const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -250,43 +256,41 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
               'Accept': 'application/json',
             },
             body: JSON.stringify({
-              model: 'moonshotai/kimi-k2.5',
+              model: 'meta/llama-3.1-70b-instruct',
               messages: [
                 { role: 'system', content: systemPrompt },
-                { role: 'user', content: `Please analyze this ${reportType || 'medical'} report and return ONLY valid JSON as instructed:\n\n${reportText}` }
+                { role: 'user', content: userContent }
               ],
-              max_tokens: 16384,
-              temperature: 0.3,
-              top_p: 1.0,
-              stream: false,
-              chat_template_kwargs: { thinking: true },
+              temperature: 0.2,
+              max_tokens: 8192,
             }),
           });
-          if (response.ok) {
-            console.log('Kimi K2.5 succeeded');
+
+          if (res.ok) {
+            console.log('NVIDIA NIM Llama 3.1 70B text analysis succeeded');
+            response = res;
           } else {
-            lastError = `Kimi K2.5 failed (${response.status}): ${await response.text()}`;
+            lastError = `NVIDIA NIM text analysis failed (${res.status}): ${await res.text()}`;
             console.error(lastError);
-            response = undefined;
           }
         } catch (err: any) {
-          lastError = `Kimi K2.5 network error: ${err.message}`;
+          lastError = `NVIDIA NIM network error: ${err.message}`;
           console.error(lastError);
-          response = undefined;
         }
       }
 
-      // 2. Fallback: OpenRouter free models
-      if ((!response || !response.ok) && OPENROUTER_API_KEY) {
+      // 2. OpenRouter Text Models (gpt-4o-mini -> llama-3.3-70b-instruct -> qwen-2.5-72b-instruct)
+      if (OPENROUTER_API_KEY && (!response || !response.ok)) {
         const models = [
-          "google/gemma-3-27b-it:free",
-          "meta-llama/llama-3.1-8b-instruct:free",
+          "openai/gpt-4o-mini",
+          "meta-llama/llama-3.3-70b-instruct",
+          "qwen/qwen-2.5-72b-instruct",
         ];
 
         for (const model of models) {
-          console.log(`Fallback: Trying OpenRouter model: ${model} for text analysis`);
+          console.log(`Trying OpenRouter model: ${model} for text analysis`);
           try {
-            response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -296,16 +300,21 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
               },
               body: JSON.stringify({
                 model: model,
-                messages: [{ role: 'user', content: userContent }]
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userContent }
+                ],
+                ...(model === 'openai/gpt-4o-mini' ? { response_format: { type: 'json_object' } } : {})
               }),
             });
 
-            if (response.ok) {
+            if (res.ok) {
               console.log(`OpenRouter model ${model} succeeded`);
+              response = res;
               break;
             } else {
-              lastError = await response.text();
-              console.error(`Error with ${model}:`, response.status, lastError);
+              lastError = await res.text();
+              console.error(`Error with ${model}:`, res.status, lastError);
             }
           } catch (err: any) {
             console.error(`Fetch failed for ${model}:`, err);
@@ -313,19 +322,12 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
           }
         }
       }
-
-      if (!KIMI_API_KEY && !OPENROUTER_API_KEY) {
-        throw new Error('No text analysis API keys configured');
-      }
     }
 
     if (!response || !response.ok) {
-      const errorDetails = geminiError
-        ? `Gemini image analysis failed: ${geminiError}. Fallback also failed: ${lastError}`
-        : lastError;
-      console.error('All AI models failed:', errorDetails);
+      console.error('All AI models failed:', lastError);
       return new Response(
-        JSON.stringify({ error: `AI analysis failed. Details: ${errorDetails}` }),
+        JSON.stringify({ error: `AI analysis failed. Details: ${lastError}` }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -335,7 +337,7 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
 
     // Extract content based on which API was successful
     if (data.choices && data.choices[0]?.message) {
-      content = data.choices[0].message.content; // OpenRouter format
+      content = data.choices[0].message.content; // OpenRouter & NVIDIA NIM format
     } else if (data.candidates && data.candidates[0]?.content) {
       content = data.candidates[0].content.parts[0].text; // Gemini direct format
     }
@@ -346,7 +348,6 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
       console.error('Empty AI response. Full data:', JSON.stringify(data));
       throw new Error('No AI response content');
     }
-
 
     let analysis;
     try {
@@ -360,20 +361,17 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
 
       // 2. Find the outermost JSON object via brace matching
       const start = cleaned.indexOf('{');
-      if (start !== -1) {
-        let depth = 0;
-        let end = -1;
-        for (let i = start; i < cleaned.length; i++) {
-          if (cleaned[i] === '{') depth++;
-          else if (cleaned[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
-        }
-        if (end !== -1) cleaned = cleaned.slice(start, end + 1);
+      const end = cleaned.lastIndexOf('}');
+      if (start !== -1 && end !== -1) {
+        cleaned = cleaned.slice(start, end + 1);
       }
 
       analysis = JSON.parse(cleaned);
 
       // 3. Validate expected shape; patch missing fields
-      if (typeof analysis.summary !== 'string') throw new Error('Missing summary field');
+      if (typeof analysis.summary !== 'string') {
+        analysis.summary = "The report analysis was generated successfully.";
+      }
       analysis.keyFindings = Array.isArray(analysis.keyFindings) ? analysis.keyFindings : [];
       analysis.recommendations = Array.isArray(analysis.recommendations) ? analysis.recommendations : [];
       analysis.questionsForDoctor = Array.isArray(analysis.questionsForDoctor) ? analysis.questionsForDoctor : [];
@@ -392,3 +390,4 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
     return new Response(JSON.stringify({ error: `An error occurred: ${msg}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
+

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { analyzeReportDirect } from '@/services/reportAnalysisService';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -202,23 +203,22 @@ export default function Reports() {
         requestBody.mimeType = selectedFile.type;
       }
 
-      const { data, error } = await supabase.functions.invoke('analyze-report', {
-        body: requestBody,
-      });
+      let analysisResult: any;
 
-      if (error) {
-        console.error("Supabase edge function error:", error);
-        // Try to extract the real error message from the response body
-        let msg = error.message || "Unknown error";
-        try {
-          // FunctionsHttpError carries the server response — parse it for the real reason
-          const context = (error as any).context;
-          if (context) {
-            const body = await context.json?.();
-            if (body?.error) msg = body.error;
-          }
-        } catch (_) { /* ignore parse errors */ }
-        throw new Error(msg);
+      try {
+        const { data, error } = await supabase.functions.invoke('analyze-report', {
+          body: requestBody,
+        });
+
+        if (error || !data?.analysis) {
+          console.warn("Supabase edge function failed, running client AI fallback:", error);
+          analysisResult = await analyzeReportDirect(requestBody);
+        } else {
+          analysisResult = data.analysis;
+        }
+      } catch (err: any) {
+        console.warn("Edge function threw error, running client AI fallback:", err);
+        analysisResult = await analyzeReportDirect(requestBody);
       }
 
       // Save to database
@@ -230,8 +230,8 @@ export default function Reports() {
           report_type: newReport.reportType,
           report_date: newReport.reportDate || null,
           file_name: selectedFile?.name || null,
-          ai_analysis: JSON.stringify(data.analysis),
-          key_findings: data.analysis.keyFindings,
+          ai_analysis: JSON.stringify(analysisResult),
+          key_findings: analysisResult.keyFindings,
         })
         .select()
         .single();

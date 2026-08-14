@@ -28,7 +28,7 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading, applicationStatus, isAdmin } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -41,16 +41,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // Admin always has access to dashboard/protected routes
-  if (isAdmin) {
-    return <>{children}</>;
-  }
-
-  // Non-approved users cannot access dashboard or protected routes
-  if (applicationStatus !== 'approved') {
     return <Navigate to="/login" replace />;
   }
 
@@ -78,7 +68,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  const { user, loading, applicationStatus, isAdmin } = useAuth();
+  const { user, loading } = useAuth();
 
   // Initialize reminder notifications with sound
   useReminderNotifications();
@@ -93,7 +83,6 @@ function AppRoutes() {
   }
 
   const location = useLocation();
-  const isApprovedOrAdmin = isAdmin || applicationStatus === 'approved';
 
   return (
     <>
@@ -102,7 +91,7 @@ function AppRoutes() {
           <Route
             path="/"
             element={
-              user && isApprovedOrAdmin ? (
+              user ? (
                 <Navigate to="/dashboard" replace />
               ) : (
                 <PageTransition>
@@ -122,7 +111,7 @@ function AppRoutes() {
           <Route
             path="/login"
             element={
-              user && isApprovedOrAdmin ? (
+              user ? (
                 <Navigate to="/dashboard" replace />
               ) : (
                 <PageTransition>
@@ -211,8 +200,8 @@ function AppRoutes() {
           <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
         </Routes>
       </AnimatePresence>
-      {user && isApprovedOrAdmin && <EmergencyButton />}
-      {user && isApprovedOrAdmin && <PatientChatbot />}
+      {user && <EmergencyButton />}
+      {user && <PatientChatbot />}
     </>
   );
 }

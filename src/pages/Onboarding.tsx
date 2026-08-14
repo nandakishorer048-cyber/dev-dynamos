@@ -63,25 +63,41 @@ export default function Onboarding() {
 
       if (authError) {
         if (authError.message.includes('User already registered') || authError.message.includes('already registered')) {
+          // Attempt automatic sign-in with the provided credentials
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: data.email,
+            password: data.password,
+          });
+
+          if (!signInError) {
+            toast({
+              title: 'Welcome back! 🎉',
+              description: 'Signed in to your existing account.',
+            });
+            navigate('/dashboard');
+            return;
+          }
+
           toast({
             title: 'Account already exists',
-            description: 'An account with this email is already registered. Please sign in.',
-            variant: 'destructive',
+            description: 'An account with this email already exists. Please sign in.',
           });
-        } else {
-          toast({
-            title: 'Registration failed',
-            description: authError.message,
-            variant: 'destructive',
-          });
+          navigate('/login', { state: { email: data.email } });
+          return;
         }
+
+        toast({
+          title: 'Registration failed',
+          description: authError.message,
+          variant: 'destructive',
+        });
         setLoading(false);
         return;
       }
 
       const userId = authData.user?.id || null;
 
-      // 2. Store application details in early_access_applications
+      // 2. Store application details with approved status
       const { error: dbError } = await supabase.from('early_access_applications').insert({
         user_id: userId,
         full_name: data.fullName,
@@ -93,20 +109,21 @@ export default function Onboarding() {
         application_reason: data.applicationReason,
         additional_notes: data.additionalNotes || null,
         referral_source: data.referralSource || null,
-        status: 'pending',
+        status: 'approved',
         email_verified: false,
       });
 
       if (dbError) {
         console.error('Error saving application:', dbError);
-        // If there's a conflict or table issue, still guide the user gracefully
       }
 
-      // 3. Immediately sign out to prevent auto-login to dashboard before approval
-      await supabase.auth.signOut({ scope: 'local' });
+      toast({
+        title: 'Account Created! 🎉',
+        description: `Welcome to Diagnyx AI, ${data.fullName || 'User'}!`,
+      });
 
-      // 4. Navigate to Success Screen
-      navigate('/application-success', { state: { email: data.email, name: data.fullName } });
+      // 3. Navigate directly to Dashboard
+      navigate('/dashboard');
     } catch (err: any) {
       console.error('Submission error:', err);
       toast({
