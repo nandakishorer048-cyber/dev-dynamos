@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { analyzeReportDirect } from '@/services/reportAnalysisService';
+import { extractTextFromPdf } from '@/lib/pdfExtract';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -189,7 +190,7 @@ export default function Reports() {
     setAnalyzing(true);
 
     try {
-      let requestBody: any = {
+      let requestBody: Record<string, string> = {
         reportType: newReport.reportType,
         language: newReport.language,
       };
@@ -197,27 +198,63 @@ export default function Reports() {
       if (inputMode === 'text') {
         requestBody.reportText = newReport.reportText;
       } else if (selectedFile) {
-        const base64Data = await fileToBase64(selectedFile);
-        requestBody.imageData = base64Data;
-        requestBody.fileName = selectedFile.name;
-        requestBody.mimeType = selectedFile.type;
+        const fileType = selectedFile.type;
+        const fileSizeKb = (selectedFile.size / 1024).toFixed(1);
+        console.log('[Reports] File selected for analysis:', { fileType, fileSizeKb: `${fileSizeKb} KB`, fileName: selectedFile.name });
+
+        if (fileType === 'application/pdf') {
+          // PDF path: extract text browser-side, then send to text analysis
+          console.log('[Reports] PDF detected — starting browser-side text extraction');
+          let pdfText: string;
+          try {
+            pdfText = await extractTextFromPdf(selectedFile);
+            console.log('[Reports] PDF text extraction succeeded, chars extracted:', pdfText.length);
+          } catch (pdfErr: unknown) {
+            const pdfErrMsg = pdfErr instanceof Error ? pdfErr.message : 'Unknown PDF extraction error';
+            console.warn('[Reports] PDF text extraction failed:', pdfErrMsg);
+            toast({
+              title: 'PDF could not be read',
+              description: pdfErrMsg,
+              variant: 'destructive',
+            });
+            setAnalyzing(false);
+            return;
+          }
+          requestBody.reportText = pdfText;
+          requestBody.fileName = selectedFile.name;
+          requestBody.mimeType = fileType;
+          console.log('[Reports] Routing PDF as text analysis');
+        } else {
+          // Image path: base64-encode and send to vision analysis
+          console.log('[Reports] Image file detected — encoding as base64 for vision analysis, mimeType:', fileType);
+          const base64Data = await fileToBase64(selectedFile);
+          requestBody.imageData = base64Data;
+          requestBody.fileName = selectedFile.name;
+          requestBody.mimeType = fileType;
+          console.log('[Reports] Routing image to vision analysis');
+        }
       }
 
       let analysisResult: any;
 
       try {
+        console.log('[Reports] Invoking Supabase Edge Function analyze-report');
         const { data, error } = await supabase.functions.invoke('analyze-report', {
           body: requestBody,
         });
 
         if (error || !data?.analysis) {
-          console.warn("Supabase edge function failed, running client AI fallback:", error);
+          console.warn('[Reports] Edge function failed or returned no analysis. Error:', error);
+          console.warn('[Reports] Attempting browser-side fallback (will fail safely — no API keys in browser)');
           analysisResult = await analyzeReportDirect(requestBody);
         } else {
+          console.log('[Reports] Edge Function analysis received successfully');
           analysisResult = data.analysis;
         }
-      } catch (err: any) {
-        console.warn("Edge function threw error, running client AI fallback:", err);
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.warn('[Reports] Edge function threw error:', errMsg);
+        console.warn('[Reports] Attempting browser-side fallback (will fail safely — no API keys in browser)');
         analysisResult = await analyzeReportDirect(requestBody);
       }
 

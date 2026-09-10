@@ -53,9 +53,35 @@ serve(async (req) => {
 
     const languageNames: Record<string, string> = { en: 'English', es: 'Spanish', fr: 'French', de: 'German', hi: 'Hindi', pt: 'Portuguese', ar: 'Arabic', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' };
     const targetLanguage = languageNames[language] || 'English';
-    const isImageAnalysis = !!imageData;
 
-    console.log('Analyzing medical report:', { reportType, textLength: reportText?.length, language: targetLanguage, isImageAnalysis });
+    // ── Route determination ──────────────────────────────────────────────────
+    // PDFs must NEVER be sent to vision models as image_url.
+    // If mimeType is application/pdf, force text path regardless of imageData.
+    // After the frontend fix, PDFs will always arrive as reportText (extracted),
+    // but we add this guard defensively in case of legacy or direct API calls.
+    const isPdfFile = mimeType === 'application/pdf';
+    const isImageAnalysis = !!imageData && !isPdfFile;
+
+    console.log('Analyzing medical report:', {
+      reportType,
+      mimeType: mimeType || 'not provided',
+      textLength: reportText?.length ?? 0,
+      language: targetLanguage,
+      analysisPath: isImageAnalysis ? 'vision' : 'text',
+      isPdfFile,
+    });
+
+    // Guard: if a PDF arrives with imageData instead of reportText (old client bug),
+    // reject it clearly so the user gets a useful message.
+    if (isPdfFile && imageData && !reportText) {
+      return new Response(
+        JSON.stringify({
+          error: 'PDF files cannot be processed as images. Please extract text from the PDF and send it as reportText. ' +
+                 'If the PDF contains scanned images, please upload an image file (JPEG/PNG) instead.',
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const systemPrompt = `You are an expert medical report analyst with deep clinical knowledge across all medical specialties including radiology, pathology, cardiology, hematology, endocrinology, and more. Your role is to provide thorough, accurate, and highly descriptive analysis of medical reports for patients.
 
@@ -114,9 +140,12 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
     let lastError = "";
 
     if (isImageAnalysis && imageData) {
+      // ── VISION PATH: images only (JPEG, PNG, WebP, GIF) ─────────────────────
       const base64DataImg = imageData.includes(',') ? imageData.split(',')[1] : imageData;
       const imageMimeTypeImg = mimeType || 'image/jpeg';
       const imageDataUrl = `data:${imageMimeTypeImg};base64,${base64DataImg}`;
+
+      console.log('Vision path: processing image file, mimeType:', imageMimeTypeImg);
 
       // ── 1. OpenRouter GPT-4o-mini (Vision) ─────────────────
       if (OPENROUTER_API_KEY && !response) {
@@ -153,8 +182,8 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
             lastError = `OpenRouter GPT-4o-mini image failed (${res.status}): ${await res.text()}`;
             console.error(lastError);
           }
-        } catch (err: any) {
-          lastError = `OpenRouter GPT-4o-mini image error: ${err.message}`;
+        } catch (err: unknown) {
+          lastError = `OpenRouter GPT-4o-mini image error: ${err instanceof Error ? err.message : String(err)}`;
           console.error(lastError);
         }
       }
@@ -194,8 +223,8 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
             lastError = `NVIDIA NIM Llama 3.2 11B Vision failed (${res.status}): ${await res.text()}`;
             console.error(lastError);
           }
-        } catch (err: any) {
-          lastError = `NVIDIA NIM Vision error: ${err.message}`;
+        } catch (err: unknown) {
+          lastError = `NVIDIA NIM Vision error: ${err instanceof Error ? err.message : String(err)}`;
           console.error(lastError);
         }
       }
@@ -234,15 +263,17 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
             lastError = `OpenRouter Gemma 3 27B image failed (${res.status}): ${await res.text()}`;
             console.error(lastError);
           }
-        } catch (err: any) {
-          lastError = `OpenRouter Gemma 3 27B image error: ${err.message}`;
+        } catch (err: unknown) {
+          lastError = `OpenRouter Gemma 3 27B image error: ${err instanceof Error ? err.message : String(err)}`;
           console.error(lastError);
         }
       }
 
     } else {
-      // --- TEXT ANALYSIS ---
+      // ── TEXT PATH: plain text input OR PDF-extracted text ───────────────────
       const userContent = `Please analyze this ${reportType || 'medical'} report and return ONLY valid JSON as instructed:\n\n${reportText}`;
+
+      console.log('Text path: processing text content, length:', reportText?.length ?? 0);
 
       // 1. Try NVIDIA NIM Llama 3.1 70B (Fast & Accurate)
       if (KIMI_API_KEY && !response) {
@@ -273,8 +304,8 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
             lastError = `NVIDIA NIM text analysis failed (${res.status}): ${await res.text()}`;
             console.error(lastError);
           }
-        } catch (err: any) {
-          lastError = `NVIDIA NIM network error: ${err.message}`;
+        } catch (err: unknown) {
+          lastError = `NVIDIA NIM network error: ${err instanceof Error ? err.message : String(err)}`;
           console.error(lastError);
         }
       }
@@ -316,9 +347,9 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
               lastError = await res.text();
               console.error(`Error with ${model}:`, res.status, lastError);
             }
-          } catch (err: any) {
+          } catch (err: unknown) {
             console.error(`Fetch failed for ${model}:`, err);
-            lastError = err.message;
+            lastError = err instanceof Error ? err.message : String(err);
           }
         }
       }
@@ -375,8 +406,9 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
       analysis.keyFindings = Array.isArray(analysis.keyFindings) ? analysis.keyFindings : [];
       analysis.recommendations = Array.isArray(analysis.recommendations) ? analysis.recommendations : [];
       analysis.questionsForDoctor = Array.isArray(analysis.questionsForDoctor) ? analysis.questionsForDoctor : [];
-    } catch (e: any) {
-      console.warn('JSON parse failed, wrapping raw content:', e.message);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn('JSON parse failed, wrapping raw content:', msg);
       // Provide a readable fallback — strip any JSON bleed-through from summary
       const summaryText = content.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/```[\s\S]*?```/g, '').trim().slice(0, 800);
       analysis = { summary: summaryText, keyFindings: [], recommendations: ['Please consult a healthcare professional.'], questionsForDoctor: [] };
@@ -390,4 +422,3 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
     return new Response(JSON.stringify({ error: `An error occurred: ${msg}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
-
