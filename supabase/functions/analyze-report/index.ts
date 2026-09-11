@@ -147,8 +147,52 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
 
       console.log('Vision path: processing image file, mimeType:', imageMimeTypeImg);
 
+      // ── 0. Google Gemini Vision (Primary if GEMINI_API_KEY is set) ───────
+      if (GEMINI_API_KEY && !response) {
+        const geminiModels = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+        for (const gModel of geminiModels) {
+          console.log(`Trying Gemini vision model: ${gModel}`);
+          try {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${gModel}:generateContent?key=${GEMINI_API_KEY}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { text: `${systemPrompt}\n\nCarefully examine this ${reportType || 'medical'} report image. Read every number, value, and label visible. Then return ONLY valid JSON as instructed.` },
+                    {
+                      inline_data: {
+                        mime_type: imageMimeTypeImg,
+                        data: base64DataImg,
+                      }
+                    }
+                  ]
+                }],
+                generationConfig: {
+                  responseMimeType: 'application/json',
+                  temperature: 0.2,
+                }
+              })
+            });
+
+            if (res.ok) {
+              console.log(`Gemini vision model ${gModel} succeeded`);
+              response = res;
+              break;
+            } else {
+              const errText = await res.text();
+              lastError = `Gemini vision (${gModel}) failed (${res.status}): ${errText}`;
+              console.error(lastError);
+            }
+          } catch (err: unknown) {
+            lastError = `Gemini vision (${gModel}) network error: ${err instanceof Error ? err.message : String(err)}`;
+            console.error(lastError);
+          }
+        }
+      }
+
       // ── 1. OpenRouter GPT-4o-mini (Vision) ─────────────────
-      if (OPENROUTER_API_KEY && !response) {
+      if (OPENROUTER_API_KEY && (!response || !response.ok)) {
         console.log('Trying openai/gpt-4o-mini for image analysis via OpenRouter');
         try {
           const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -275,8 +319,46 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, NO text before
 
       console.log('Text path: processing text content, length:', reportText?.length ?? 0);
 
+      // 0. Try Google Gemini (Primary if GEMINI_API_KEY is set)
+      if (GEMINI_API_KEY && !response) {
+        const geminiModels = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+        for (const gModel of geminiModels) {
+          console.log(`Trying Gemini text model: ${gModel}`);
+          try {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${gModel}:generateContent?key=${GEMINI_API_KEY}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { text: `${systemPrompt}\n\nPlease analyze this ${reportType || 'medical'} report and return ONLY valid JSON as instructed:\n\n${reportText}` }
+                  ]
+                }],
+                generationConfig: {
+                  responseMimeType: 'application/json',
+                  temperature: 0.2,
+                }
+              })
+            });
+
+            if (res.ok) {
+              console.log(`Gemini text model ${gModel} succeeded`);
+              response = res;
+              break;
+            } else {
+              const errText = await res.text();
+              lastError = `Gemini text (${gModel}) failed (${res.status}): ${errText}`;
+              console.error(lastError);
+            }
+          } catch (err: unknown) {
+            lastError = `Gemini text (${gModel}) network error: ${err instanceof Error ? err.message : String(err)}`;
+            console.error(lastError);
+          }
+        }
+      }
+
       // 1. Try NVIDIA NIM Llama 3.1 70B (Fast & Accurate)
-      if (KIMI_API_KEY && !response) {
+      if (KIMI_API_KEY && (!response || !response.ok)) {
         console.log('Trying meta/llama-3.1-70b-instruct via NVIDIA NIM for text analysis');
         try {
           const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
